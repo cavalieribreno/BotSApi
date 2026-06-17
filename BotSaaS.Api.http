@@ -1,0 +1,6 @@
+@BotSaaS.Api_HostAddress = http://localhost:5069
+
+GET {{BotSaaS.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

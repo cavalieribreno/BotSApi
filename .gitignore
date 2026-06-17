@@ -1,0 +1,28 @@
+# Secrets / environment
+.env
+*.env
+!.env.example
+
+# Internal planning docs (not for public repo)
+PROJETO.md
+
+
+# Build output
+bin/
+obj/
+out/
+
+# .NET
+*.user
+*.suo
+project.lock.json
+artifacts/
+
+# IDE / editor
+.vs/
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store

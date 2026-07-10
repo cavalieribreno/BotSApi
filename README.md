@@ -79,9 +79,10 @@ A API sobe em `http://localhost:5069`.
 ```
 src/
 ├── Core/
-│   ├── Auth/        registro e login (orquestra o cadastro)
-│   ├── Users/       entidade User + gestão
-│   └── Companies/   os tenants (empresas clientes)
+│   ├── Auth/          registro e login (orquestra o cadastro)
+│   ├── Users/         entidade User + gestão
+│   ├── Companies/     os tenants (empresas clientes)
+│   └── Conversations/ conversa + mensagens (Conversation/Message + repositórios)
 └── Shared/
     ├── Results/     Result Pattern
     ├── Security/    hash de senha + JWT

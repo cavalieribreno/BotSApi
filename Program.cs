@@ -14,8 +14,9 @@ var builder = WebApplication.CreateBuilder(args);
 DotNetEnv.Env.Load();
 
 // Dependencies 
-builder.Services.AddHttpClient<GeminiAiClient>(); // remover
+builder.Services.AddHttpClient<IAiClient, GroqAiClient>();
 builder.Services.AddScoped<DbSession>();
+builder.Services.AddSingleton<ChatMemoryAI>();
 builder.Services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<IDatabase, MySqlDatabase>();

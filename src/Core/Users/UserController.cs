@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BotSaaS.Api.Core.Users;
 
+// Protected route: reads the caller's identity/tenant from the JWT claims.
 [Authorize]
 [ApiController]
 [Route("api")]

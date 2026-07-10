@@ -15,7 +15,7 @@ e isso vira um **registro estruturado** que o dono do negócio acompanha num pai
 | Banco | MySQL |
 | Acesso a dados | **ADO.NET puro** (sem ORM/Dapper) + driver MySqlConnector |
 | Auth | JWT próprio (HMAC-SHA256) + BCrypt |
-| IA | Google Gemini (atrás de interface neutra, trocável) |
+| IA | Google Gemini ou Groq/Llama (atrás de interface neutra `IAiClient`, trocável) |
 
 ## Arquitetura
 
@@ -45,7 +45,7 @@ Decisões de design que guiam o código:
 - ✅ Cadastro de empresa + usuário (transacional)
 - ✅ Login com verificação BCrypt e emissão de JWT
 - ✅ Rota protegida lendo a identidade/tenant das claims do token
-- ✅ Integração com IA (Gemini) respondendo via API
+- ✅ Integração com IA respondendo via API — dois provedores trocáveis por DI (Gemini e Groq/Llama)
 - 🔜 Conversas com histórico (memória), extração de ação estruturada (function calling)
 - 🔜 Canal de WhatsApp, painel do dono, cobrança
 
@@ -56,17 +56,16 @@ Decisões de design que guiam o código:
 | `POST` | `/api/auth/register` | Cria empresa + usuário |
 | `POST` | `/api/auth/login` | Autentica e devolve o JWT |
 | `GET`  | `/api/me` | Identidade do requisitante (requer Bearer) |
-| `GET`  | `/api/ai/test?prompt=` | Teste da IA (temporário) |
+| `GET`  | `/api/ai/test?messageUser=` | Teste da IA (temporário) |
 
 ## Como rodar
 
-**Pré-requisitos:** SDK do .NET 10, MySQL (ex: XAMPP), uma chave de API do Google Gemini.
+**Pré-requisitos:** SDK do .NET 10, MySQL (ex: XAMPP), uma chave de API de IA (Google Gemini ou Groq).
 
-1. Clone o repositório e copie o template de ambiente:
-   ```bash
-   cp .env.example .env
-   ```
-2. Preencha o `.env` com seus dados (banco, segredo JWT, chave do Gemini).
+1. Clone o repositório e crie um arquivo `.env` na raiz.
+2. Preencha o `.env` com suas variáveis: banco (`DB_HOST/USER/PASSWORD/NAME/PORT`),
+   JWT (`JWT_SECRET/ISSUER/AUDIENCE/EXPIRES_HOURS`), IA (`GEMINI_API_KEY/MODEL` e/ou
+   `GROQ_API_KEY/MODEL`) e `SYSTEM_PROMPT`. O provedor ativo é escolhido na DI (`Program.cs`).
 3. Crie o banco e as tabelas `companies` e `users` no MySQL.
 4. Rode:
    ```bash
@@ -87,5 +86,5 @@ src/
     ├── Results/     Result Pattern
     ├── Security/    hash de senha + JWT
     ├── Database/    conexão e sessão de transação
-    └── AI/          cliente de IA (Gemini)
+    └── AI/          cliente de IA (Gemini e Groq, atrás de IAiClient)
 ```

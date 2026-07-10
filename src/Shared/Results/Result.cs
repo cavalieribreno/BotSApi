@@ -16,6 +16,12 @@ public class Result<T>
     }
 
     // Methods to return 
-    public static Result<T> Success(T value) => new Result<T>(true, value, null);
-    public static Result<T> Failure(string error) => new Result<T>(false, default, error);
+    public static Result<T> Success(T value)
+    {
+        return new Result<T>(true, value, null); 
+    }
+    public static Result<T> Failure(string error)
+    {
+        return new Result<T>(false, default, error); 
+    }
 }

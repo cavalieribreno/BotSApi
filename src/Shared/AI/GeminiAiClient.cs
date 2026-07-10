@@ -1,6 +1,7 @@
 namespace BotSaaS.Api.Shared.AI;
 
-public class GeminiAiClient
+// Gemini implementation of IAiClient: builds the request from the system prompt + history, calls the API, returns the reply text.
+public class GeminiAiClient : IAiClient
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
@@ -15,24 +16,44 @@ public class GeminiAiClient
             ?? throw new InvalidOperationException("GEMINI_MODEL não definido");            
     }
 
-    public async Task<string> GenerateContentAsync(string prompt)
+    // Sends the system prompt + conversation history to Gemini and returns the model's reply.
+    public async Task<string> GenerateReplyAsync(string systemPrompt, IReadOnlyList<ChatMessage> history)
     {
+        // Map our history to Gemini's "contents" format. Gemini names the assistant "model", not "assistant".
+        List<object> contents = new List<object>();
+
+        foreach(ChatMessage message in history)
+        {
+            string role;
+            if(message.Role == ChatRole.User)
+            {
+                role = "user";
+            }
+            else
+            {
+                role = "model";
+            }
+            contents.Add(new
+            {
+                role = role,
+                parts = new[]
+                {
+                    new { text = message.Content }
+                }
+            });
+        }
         string url = $"https://generativelanguage.googleapis.com/v1beta/models/{_modelAi}:generateContent?key={_apiKey}";
 
+        // system_instruction (the bot's role) is a separate field, outside "contents".
         var requestBody = new
         {
-            contents = new []
+            contents = contents,
+            system_instruction = new
             {
-                new
+                parts = new[]
                 {
-                    parts = new []
-                    {
-                        new { text = prompt }
-                    }   
+                    new { text = systemPrompt }
                 }
-            },
-            generationConfig = new
-            {
             }
         };
         

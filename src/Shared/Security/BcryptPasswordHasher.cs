@@ -1,5 +1,6 @@
 namespace BotSaaS.Api.Shared.Security;
 
+// BCrypt implementation of IPasswordHasher; the salt is embedded in the generated hash.
 public class BcryptPasswordHasher : IPasswordHasher
 {
     public string Hash(string password)

@@ -46,8 +46,8 @@ Decisões de design que guiam o código:
 - ✅ Login com verificação BCrypt e emissão de JWT
 - ✅ Rota protegida lendo a identidade/tenant das claims do token
 - ✅ Integração com IA respondendo via API — dois provedores trocáveis por DI (Gemini e Groq/Llama)
-- 🔜 Conversas com histórico (memória), extração de ação estruturada (function calling)
-- 🔜 Canal de WhatsApp, painel do dono, cobrança
+- ✅ Conversas com histórico persistido no banco (memória por cliente) — testado e2e
+- 🔜 Extração de ação estruturada (function calling), canal de WhatsApp, painel do dono, cobrança
 
 ## Endpoints
 
@@ -56,7 +56,7 @@ Decisões de design que guiam o código:
 | `POST` | `/api/auth/register` | Cria empresa + usuário |
 | `POST` | `/api/auth/login` | Autentica e devolve o JWT |
 | `GET`  | `/api/me` | Identidade do requisitante (requer Bearer) |
-| `GET`  | `/api/ai/test?messageUser=` | Teste da IA (temporário) |
+| `POST` | `/api/conversations` | Processa uma mensagem do cliente e devolve a resposta da IA (requer Bearer; entrada dev/token — produção será o webhook) |
 
 ## Como rodar
 
@@ -66,7 +66,7 @@ Decisões de design que guiam o código:
 2. Preencha o `.env` com suas variáveis: banco (`DB_HOST/USER/PASSWORD/NAME/PORT`),
    JWT (`JWT_SECRET/ISSUER/AUDIENCE/EXPIRES_HOURS`), IA (`GEMINI_API_KEY/MODEL` e/ou
    `GROQ_API_KEY/MODEL`) e `SYSTEM_PROMPT`. O provedor ativo é escolhido na DI (`Program.cs`).
-3. Crie o banco e as tabelas `companies` e `users` no MySQL.
+3. Crie o banco e as tabelas `companies`, `users`, `conversations` e `messages` no MySQL.
 4. Rode:
    ```bash
    dotnet run

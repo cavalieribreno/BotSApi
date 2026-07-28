@@ -38,6 +38,7 @@
   .cover .meta { margin-top: 60px; color: #5a6b7b; font-size: 13px; }
   .tag { display: inline-block; background: #1e88a8; color: #fff; padding: 2px 9px; border-radius: 10px; font-size: 10.5px; margin: 1px; }
   .tag.done { background: #43a047; }
+  .tag.wip { background: #f4b400; color: #1f2430; }
   .tag.todo { background: #9aa7b3; }
   .toc a { color: #1e6091; text-decoration: none; }
   .small { font-size: 11px; color: #5a6b7b; }
@@ -52,7 +53,7 @@
   <div class="meta">
     Plataforma SaaS de bot de IA para WhatsApp<br>
     C# .NET 10 · ASP.NET Core · MySQL · ADO.NET puro<br><br>
-    Atualizado em 14/06/2026 · Fase 1 (Auth) concluída
+    Atualizado em 27/07/2026 · Auth + IA (Gemini/Groq) + Conversations concluídos e testados e2e
   </div>
 </div>
 
@@ -67,11 +68,11 @@
   <li>Decisões de arquitetura</li>
   <li>Fluxo: Registro (transacional)</li>
   <li>Fluxo: Login (JWT)</li>
+  <li>Fluxo: Conversa (IA + memória)</li>
   <li>Segurança</li>
   <li>Injeção de dependência (DI)</li>
-  <li>O produto em funcionamento (Fase 2)</li>
   <li>Roadmap &amp; estado atual</li>
-  <li>Próximos passos &amp; pendências</li>
+  <li>Pontos de atenção &amp; próximos passos</li>
   <li>Glossário</li>
 </ol>
 
@@ -81,13 +82,25 @@ mensalidade e recebe um bot já configurado para o negócio dele, sem precisar s
 <div class="note"><strong>Importante:</strong> o produto é uma <strong>plataforma</strong>, não "um bot".
 O bot é uma das funcionalidades dentro da plataforma. Cada loja é um <em>tenant</em> (uma <code>Company</code>),
 com um número, um bot e uma configuração própria.</div>
+<div class="ok"><strong>O bot é TRANSACIONAL, não conversacional.</strong> A conversa é só a porta de entrada;
+o valor está em <strong>virar ação estruturada</strong>: o cliente final faz um <strong>pedido</strong> ou
+<strong>marca um horário</strong> pelo bot, e isso vira um <strong>registro</strong> que aparece num
+<strong>painel para o dono do negócio</strong>. O bot é o garçom; o produto é a comanda + a visão do dono.</div>
+<pre class="diagram">
+  cliente final ─► bot (WhatsApp) ─► IA extrai AÇÃO ─► grava Pedido/Agendamento
+                                                             │
+                                     dono ─► painel (login, vê só o tenant dele)
+</pre>
 
 <table>
   <tr><th>Ator</th><th>Como usa</th><th>O que faz</th></tr>
-  <tr><td>Dono da loja</td><td>Painel web (futuro)</td><td>Cadastra-se, configura o bot, vê conversas, paga a mensalidade</td></tr>
-  <tr><td>Cliente final</td><td>WhatsApp</td><td>Manda mensagem para o número da loja e recebe resposta automática da IA</td></tr>
+  <tr><td>Dono da loja</td><td>Painel web (futuro)</td><td>Cadastra-se, configura o bot, vê pedidos/agendamentos, paga a mensalidade</td></tr>
+  <tr><td>Cliente final</td><td>WhatsApp</td><td>Manda mensagem para o número da loja; a IA atende e registra a ação (pedido/horário)</td></tr>
   <tr><td>Você (SaaS)</td><td>Infra</td><td>Hospeda o banco e a aplicação; responsável pelos dados (LGPD)</td></tr>
 </table>
+<p class="small"><strong>Contexto:</strong> projeto construído como peça de <strong>portfólio</strong> (demonstrar
+arquitetura + integração de IA end-to-end), com comercialização futura possível. Mira no fluxo end-to-end
+fechado como entregável principal.</p>
 
 <h2>2. Stack tecnológica</h2>
 <table>
@@ -97,9 +110,9 @@ com um número, um bot e uma configuração própria.</div>
   <tr><td>Acesso a dados</td><td><strong>ADO.NET puro</strong> + driver MySqlConnector</td><td>Sem ORM/Dapper — SQL escrito à mão, controle total, aprender o que está embaixo</td></tr>
   <tr><td>Padrão de retorno</td><td>Result Pattern (mínimo)</td><td>Erro como valor, não como exceção espalhada</td></tr>
   <tr><td>Auth</td><td>JWT próprio + BCrypt</td><td>Poucos usuários (donos), não precisa Auth0/Identity</td></tr>
+  <tr><td><strong>IA</strong></td><td><strong>Google Gemini</strong> ou <strong>Groq/Llama</strong> (atrás de <code>IAiClient</code>)</td><td>O cérebro do bot — provedor trocável por DI (1 linha). Abstração já provada na prática</td></tr>
   <tr><td>Frontend</td><td>React + TypeScript (futuro)</td><td>—</td></tr>
   <tr><td>WhatsApp</td><td>Evolution API ou Z-API (futuro)</td><td>Transporte abstraído, troca barata</td></tr>
-  <tr><td>IA</td><td>Anthropic Claude API (futuro)</td><td>O cérebro do bot</td></tr>
   <tr><td>Config</td><td>.env (DotNetEnv)</td><td>Segredos fora do código</td></tr>
 </table>
 
@@ -111,29 +124,34 @@ com um número, um bot e uma configuração própria.</div>
   ┌───────────────────────────────────────────────────────┐
   │  Core/  — o KERNEL (a essência do produto)             │
   │                                                         │
-  │    Auth ───► Users ───► Companies      (Fase 1 ✅)      │
+  │    Auth ───► Users ───► Companies        (Fase 1 ✅)    │
   │   (login)   (usuário)   (tenant)                        │
   │                                                         │
-  │    WhatsApp · AI · Conversations · Billing   (futuro)  │
+  │    Conversations  (histórico + IA)      (em construção)│
+  │    WhatsApp · Billing                        (futuro)  │
   └───────────────────────────┬───────────────────────────┘
                               │ usa (nunca o contrário)
                               ▼
   ┌───────────────────────────────────────────────────────┐
   │  Shared/  — base técnica (SEM regra de negócio)        │
-  │    Database · Security · Results                       │
+  │    Database · Security · Results · AI                  │
   └───────────────────────────┬───────────────────────────┘
                               ▼
                            MySQL
+                        + LLM (HTTP)
 
   Modules/ (nichos: Barber, etc.) dependem do Core e o estendem.
 </pre>
 <div class="note"><strong>Regra de ouro:</strong> <code>Core</code> depende de <code>Shared</code>, <strong>nunca</strong> o contrário.
 "Usado por todos" não significa "núcleo" — Shared é o <em>chão</em>, Core é o <em>centro</em>.</div>
+<div class="note"><strong>Onde mora a IA:</strong> a costura com o provedor de LLM (<code>IAiClient</code> + <code>GeminiAiClient</code>/<code>GroqAiClient</code>)
+fica em <strong>Shared/AI</strong> — é encanamento técnico neutro, sem regra de negócio, como <code>Database</code> e <code>Security</code>.
+Quem tem regra (montar prompt, salvar histórico, decidir a ação) é o <strong>Core/Conversations</strong>.</div>
 
 <h3>Como saber onde pôr cada coisa</h3>
 <ul>
   <li>Fala de empresa / conversa / plano → <strong>Core</strong> (kernel).</li>
-  <li>Serve qualquer app C# do mundo (Result, hash, conexão) → <strong>Shared</strong>.</li>
+  <li>Serve qualquer app C# do mundo (Result, hash, conexão, cliente HTTP de LLM) → <strong>Shared</strong>.</li>
   <li>É específico de um nicho (barbearia, restaurante) → <strong>Modules</strong>.</li>
 </ul>
 
@@ -145,14 +163,19 @@ src/
 │   │   ├── AuthService.cs        IAuthService.cs
 │   │   ├── AuthController.cs      AuthDTOs.cs (RegisterRequest, LoginRequest, UserResponse)
 │   ├── Users/             (entidade User + gestão: perfil, listar)
-│   │   ├── UserEntities.cs (User)
+│   │   ├── UserEntities.cs (User)      UserController.cs (GET /api/me)
 │   │   ├── UserService.cs         IUserService.cs
 │   │   ├── UserRepository.cs      IUserRepository.cs
 │   ├── Companies/         (os tenants)
 │   │   ├── CompaniesEntities.cs (Company, enum Segment)
 │   │   ├── CompaniesService.cs    ICompaniesService.cs
 │   │   ├── CompaniesRepository.cs ICompaniesRepository.cs
-│   ├── WhatsApp/  AI/  Conversations/  Billing/   ← Fase 2+ (vazias)
+│   ├── Conversations/     (o fluxo do bot — em construção)
+│   │   ├── ConversationEntities.cs (Conversation, Message)
+│   │   ├── ConversationService.cs     IConversationService.cs
+│   │   ├── ConversationRepository.cs  IConversationRepository.cs
+│   │   ├── MessageRepository.cs       IMessageRepository.cs
+│   ├── WhatsApp/  Billing/                          ← futuro (vazias)
 │
 ├── Modules/               ← nichos que estendem o Core
 │   └── Barber/            ← Fase 3
@@ -160,16 +183,19 @@ src/
 └── Shared/                ← base técnica
     ├── Database/   (IDatabase, MySqlDatabase, DbSession, DbCommandExtensions)
     ├── Security/   (IPasswordHasher, BcryptPasswordHasher, IJwtTokenGenerator, JwtTokenGenerator)
-    └── Results/    (Result&lt;T&gt;)
+    ├── Results/    (Result&lt;T&gt;)
+    └── AI/         (IAiClient, GeminiAiClient, GroqAiClient, ChatMessage/ChatRole, DTOs)
 </pre>
 <p class="small">Obs.: namespace é lógico (<code>BotSaaS.Api.Core.Users</code>), ignorando o <code>src/</code>. A pasta é organização; o <strong>namespace</strong> é o que define o módulo de verdade.</p>
 
 <h2>5. Módulos atuais</h2>
 <table>
-  <tr><th>Módulo</th><th>Responsabilidade</th><th>Conteúdo</th></tr>
-  <tr><td><strong>Auth</strong></td><td>Autenticação — registro e login. Orquestra o cadastro (cria Company + User numa transação).</td><td>AuthService, AuthController, DTOs</td></tr>
-  <tr><td><strong>Users</strong></td><td>Dono da entidade User e da gestão de usuário (criar, buscar por email; futuro: perfil, listar).</td><td>User, UserService, UserRepository</td></tr>
-  <tr><td><strong>Companies</strong></td><td>Os tenants. Dono de "o que é uma Company válida". Futuro: BotConfig, settings.</td><td>Company, CompaniesService, CompaniesRepository</td></tr>
+  <tr><th>Módulo</th><th>Responsabilidade</th><th>Conteúdo</th><th>Estado</th></tr>
+  <tr><td><strong>Auth</strong></td><td>Autenticação — registro e login. Orquestra o cadastro (cria Company + User numa transação).</td><td>AuthService, AuthController, DTOs</td><td><span class="tag done">e2e</span></td></tr>
+  <tr><td><strong>Users</strong></td><td>Dono da entidade User e da gestão (criar, buscar por email; rota <code>/api/me</code>). Futuro: perfil, listar.</td><td>User, UserService, UserRepository, UserController</td><td><span class="tag done">e2e</span></td></tr>
+  <tr><td><strong>Companies</strong></td><td>Os tenants. Dono de "o que é uma Company válida". Futuro: BotConfig, settings.</td><td>Company, CompaniesService, CompaniesRepository</td><td><span class="tag done">e2e</span></td></tr>
+  <tr><td><strong>Conversations</strong></td><td>O fluxo do bot: acha/cria a conversa do cliente, salva mensagens, monta o histórico, chama a IA e salva a resposta. Substitui a memória em RAM por persistência no banco (por cliente). Entrada via <code>ConversationController</code> (<code>POST /api/conversations</code>, protegido).</td><td>Conversation, Message, ConversationService, ConversationController, 2 repositórios</td><td><span class="tag done">e2e</span></td></tr>
+  <tr><td><strong>Shared/AI</strong></td><td>Costura neutra com o LLM. <code>IAiClient</code> esconde o provedor; traduz <code>systemPrompt</code>+histórico pro formato de cada API.</td><td>IAiClient, GeminiAiClient, GroqAiClient, ChatMessage</td><td><span class="tag done">e2e</span></td></tr>
 </table>
 <p><strong>Por que Auth e Users são separados?</strong> Autenticação (login/registro/senha) é um concern;
 a entidade User e sua gestão (perfil, listar) é outro. <code>Auth</code> <strong>depende de</strong> <code>Users</code>, mão única.</p>
@@ -177,31 +203,43 @@ a entidade User e sua gestão (perfil, listar) é outro. <code>Auth</code> <stro
 <h2>6. Modelo de dados</h2>
 <h3>Relações</h3>
 <pre class="diagram">
-  Company 1───N User          ✅ existe (tenant + donos)
-  Company 1───N Channel        ⏳ Fase 2 (WhatsApp/Telegram...)
-  Channel 1───N Conversation   ⏳ Fase 2
-  Conversation 1───N Message   ⏳ Fase 2 (Role: User / Assistant)
+  Company 1───N User               ✅ existe (tenant + donos)
+  Company 1───N Conversation       ✅ existe (por cliente/telefone)
+  Conversation 1───N Message       ✅ existe (Role: User / Assistant)
+  Company 1───N Channel            ⏳ futuro (WhatsApp/Telegram...)
 </pre>
+<div class="note"><strong>Simplificação atual:</strong> a <code>Conversation</code> nasceu enxuta, <em>sem</em> a entidade
+<code>Channel</code> ainda. O telefone do cliente (<code>customer_phone</code>) vai direto na conversa; o par
+<code>(company_id, customer_phone)</code> identifica o fio. Quando o <code>Channel</code> existir, isso vira
+<code>ChannelId</code> + <code>ContactIdentifier</code> (agnóstico de canal). Sem <code>LastMessageAt</code>/<code>IsActive</code>
+ainda — expiração por inatividade vem depois.</div>
 
 <h3>Tabelas (criadas)</h3>
 <pre>
-companies                          users
-─────────                          ─────
-id           CHAR(36)  PK          id            CHAR(36)  PK
-name         VARCHAR(150)          company_id    CHAR(36)  FK → companies(id)
-segment      INT                   name          VARCHAR(150)
-created_at   DATETIME              email         VARCHAR(255)  UNIQUE (global)
-                                   password_hash VARCHAR(255)
-                                   created_at    DATETIME
-todas NOT NULL                     todas NOT NULL
+companies                    users                          conversations
+─────────                    ─────                          ─────────────
+id          CHAR(36) PK      id            CHAR(36) PK      id             CHAR(36) PK
+name        VARCHAR(150)     company_id    CHAR(36) FK      company_id     CHAR(36) FK → companies
+segment     INT              name          VARCHAR(150)     customer_phone VARCHAR
+created_at  DATETIME         email         VARCHAR(255) U   created_at     DATETIME
+                             password_hash VARCHAR(255)
+                             created_at    DATETIME         messages
+                                                            ────────
+                                                            id              CHAR(36) PK
+                                                            conversation_id CHAR(36) FK → conversations
+                                                            role            INT   (reusa ChatRole)
+                                                            content         TEXT
+                                                            created_at      DATETIME
 </pre>
 <div class="note"><strong>email UNIQUE global:</strong> um e-mail = uma conta. É essa constraint que gera o erro
 <code>1062</code> (duplicate) no cadastro repetido — e que o teste de atomicidade usou para provar o rollback.</div>
+<div class="note"><strong><code>messages.role</code> é <code>INT</code>, não string:</strong> reusa o mesmo enum <code>ChatRole</code>
+(User=0 / Assistant=1) do módulo de IA. Mesma regra de todo enum no banco — nunca reordenar os números depois que tiver dado.</div>
 
 <h3>Mapeamento C# → MySQL</h3>
 <table>
   <tr><th>C#</th><th>MySQL</th><th>Detalhe</th></tr>
-  <tr><td><code>Guid</code></td><td><code>CHAR(36)</code></td><td>Texto legível; evita conversão de bytes do BINARY(16) no ADO.NET puro</td></tr>
+  <tr><td><code>Guid</code></td><td><code>CHAR(36)</code></td><td>Texto legível; evita conversão de bytes do BINARY(16) no ADO.NET puro. Ler com <code>(Guid)reader["id"]</code> — o driver já entrega Guid, <strong>nunca <code>Guid.Parse</code></strong> (estoura <code>InvalidCastException</code>)</td></tr>
   <tr><td><code>enum</code></td><td><code>INT</code></td><td>Valor numérico; <code>(int)e</code> ↔ <code>(Enum)reader.GetInt32()</code>. Nunca reordenar os números.</td></tr>
   <tr><td><code>DateTime</code></td><td><code>DATETIME</code></td><td>Preenchido pela <strong>aplicação</strong> (<code>DateTime.UtcNow</code>), não pelo banco</td></tr>
   <tr><td colspan="3"><strong>Coluna:</strong> <code>snake_case</code> sem prefixo (<code>created_at</code>, não <code>comp_created_at</code>). SELECT sempre com colunas explícitas.</td></tr>
@@ -250,17 +288,35 @@ Quando vários services dividirem transação, o <code>DbSession</code> vira UoW
   <tr><td><code>IDatabase</code></td><td><code>MySqlDatabase</code></td><td>MySqlConnector</td></tr>
   <tr><td><code>IPasswordHasher</code></td><td><code>BcryptPasswordHasher</code></td><td>BCrypt</td></tr>
   <tr><td><code>IJwtTokenGenerator</code></td><td><code>JwtTokenGenerator</code></td><td>System.IdentityModel.Tokens.Jwt</td></tr>
+  <tr><td><code>IAiClient</code></td><td><code>GeminiAiClient</code> / <code>GroqAiClient</code></td><td>Google Gemini / Groq (Llama)</td></tr>
 </table>
-<p>Trocar a tecnologia (MySQL→Postgres, BCrypt→Argon2) custa <strong>uma linha na DI</strong>.</p>
+<p>Trocar a tecnologia (MySQL→Postgres, BCrypt→Argon2, Gemini→Groq) custa <strong>uma linha na DI</strong>.</p>
 
-<h3>7.5 Régua de nome por camada</h3>
+<h3>7.5 IA neutra — um contrato, dois provedores</h3>
+<p>O contrato é único e burro: <code>Task&lt;string&gt; GenerateReplyAsync(string systemPrompt, IReadOnlyList&lt;ChatMessage&gt; history)</code>.
+O client só recebe o prompt-base + o histórico e devolve o texto. Quem monta o prompt e persiste o histórico é o Core.
+Cada implementação traduz isso pro formato da sua API — e as diferenças <strong>provam</strong> o valor da abstração:</p>
 <table>
-  <tr><th>Camada</th><th>Verbo</th><th>Exemplo</th></tr>
-  <tr><td>Repository</td><td>de <strong>dado</strong> (espelha SQL)</td><td><code>InsertUser</code>, <code>GetUserByEmail</code></td></tr>
-  <tr><td>Service</td><td>de <strong>domínio</strong></td><td><code>CreateUser</code>, <code>CreateCompany</code></td></tr>
-  <tr><td>AuthService</td><td>caso de <strong>uso</strong></td><td><code>Register</code>, <code>Login</code></td></tr>
+  <tr><th></th><th>Gemini</th><th>Groq (formato OpenAI)</th></tr>
+  <tr><td>Histórico</td><td><code>contents</code></td><td><code>messages</code></td></tr>
+  <tr><td>Papel do assistente</td><td><code>"model"</code></td><td><code>"assistant"</code></td></tr>
+  <tr><td>System prompt</td><td>campo separado <code>system_instruction</code></td><td>1ª mensagem <code>role:"system"</code></td></tr>
+  <tr><td>Conteúdo</td><td><code>parts[].text</code></td><td><code>content</code> (string)</td></tr>
+  <tr><td>Chave da API</td><td>na URL (<code>?key=</code>)</td><td>header <code>Authorization: Bearer</code></td></tr>
+  <tr><td>Resposta</td><td><code>candidates[0].content.parts[0].text</code></td><td><code>choices[0].message.content</code></td></tr>
 </table>
-<p>O repo <strong>nunca</strong> leva nome de caso de uso (nada de <code>RegisterUser</code>).</p>
+<div class="ok"><strong>Provado em teste e2e:</strong> os dois provedores respondem 200 seguindo o system prompt.
+Trocar Gemini ↔ Groq é <strong>uma linha</strong> no <code>Program.cs</code> (<code>AddHttpClient&lt;IAiClient, X&gt;</code>) —
+nenhum caller muda. É a prova concreta de que a abstração não é enfeite.</div>
+<p class="small"><strong>LLM é stateless:</strong> o modelo não tem memória. "Memória" = reenviar o system prompt + o histórico
+inteiro a cada chamada. Por isso o histórico precisa viver em algum lugar (o banco) e ter um teto (senão o custo e a latência crescem sem limite).</p>
+
+<h3>7.6 System prompt dinâmico (por empresa)</h3>
+<p>O prompt final é <strong>por tenant</strong>: cada empresa gera o seu a partir do <code>BotConfig</code>
+(nome, segmento, horário, serviços, tom). Hoje o prompt vem de fora, cru (do <code>.env</code>); o desenho-alvo é
+<strong>base (template) + dados da empresa (banco)</strong> montados em runtime. O <code>IAiClient</code> é burro:
+só recebe o prompt pronto e manda. Cada nicho poderá contribuir com contexto extra via
+<code>INichoConfig.BuildSystemPromptExtension()</code>.</p>
 
 <h2>8. Fluxo: Registro (transacional)</h2>
 <pre class="diagram">
@@ -306,107 +362,147 @@ no banco (nenhuma Company órfã). A atomicidade funciona.</div>
         ▼
   Result&lt;string&gt; (o token)  →  200 { token }   |   falha → 401 Unauthorized
 </pre>
+<div class="ok"><strong>Provado em teste e2e:</strong> senha certa → 200 + JWT; senha errada e email inexistente → 401.
+Rota protegida <code>GET /api/me</code> lê <code>sub</code>/<code>companyId</code>/<code>email</code> das claims;
+token adulterado → 401 (a assinatura HMAC barra a forja).</div>
 
-<h2>10. Segurança</h2>
+<h2>10. Fluxo: Conversa (IA + memória)</h2>
+<p>O coração transacional do produto. Substitui a antiga memória em RAM (uma lista global, deletada) por
+histórico <strong>persistido no banco, por cliente</strong>.</p>
+<pre class="diagram">
+  (hoje) POST /api/conversations   { customerPhone, messageText }   [Authorize]
+         └─ companyId vem do JWT (claim), NÃO do body ── entrada dev/token
+  (alvo) Webhook do WhatsApp ─► sem token; companyId vem do CANAL
+        │
+        ▼
+  ConversationService.ProcessMessage
+     ├─ find-or-create: GetConversationByCompanyAndPhone(company, phone)
+     │        └─ null? → cria a Conversation (cliente novo)
+     ├─ InsertMessage (msg do cliente, Role=User)
+     ├─ GetMessagesByConversation ──► carrega histórico (ORDER BY created_at)
+     ├─ converte List&lt;Message&gt; (entidade) → List&lt;ChatMessage&gt; (DTO do AI)
+     ├─ IAiClient.GenerateReplyAsync(systemPrompt, history) ──► LLM (Gemini/Groq)
+     └─ InsertMessage (resposta, Role=Assistant)
+        ▼
+  Result&lt;string&gt; (a resposta)  →  devolve ao cliente
+</pre>
+<div class="note"><strong>Por que "find-or-create":</strong> o <code>null</code> do repositório separa a 1ª mensagem
+(cria a conversa) das demais (só insere a msg). O par <code>(company_id, customer_phone)</code> respeita o multi-tenant —
+a conversa é sempre buscada dentro do tenant.</div>
+<div class="ok"><strong>Provado em teste e2e (Groq):</strong> register → login (token) → <code>POST /api/conversations</code> duas vezes
+na mesma conversa. O bot lembrou do pedido dito no 1º turno (memória via histórico no banco) e seguiu o system prompt
+(disse que ia "verificar o preço" em vez de inventar). Cadeia completa: token → tenant do JWT → service → LLM → grava → resposta.</div>
+<div class="note"><strong>Entrada atual vs. produção:</strong> hoje a entrada é o <code>ConversationController</code> protegido — o
+<code>companyId</code> sai do <strong>JWT</strong> (correto para uma entrada com token), e o body só traz <code>customerPhone</code> + <code>messageText</code>.
+É marcada como <strong>dev/token</strong> porque a entrada de produção é o <strong>webhook do WhatsApp</strong>, onde <strong>não há token</strong>:
+ali o <code>companyId</code> virá do <strong>canal</strong> que recebeu a mensagem (qual número/instância).</div>
+
+<h2>11. Segurança</h2>
 <table>
   <tr><th>Item</th><th>Como</th></tr>
   <tr><td>Senha</td><td>Nunca em texto puro. <strong>BCrypt</strong> (work factor 11, salt embutido) → <code>$2a$11$...</code>. Irreversível.</td></tr>
   <tr><td>Login</td><td><code>Verify</code> compara a senha com o hash. Mensagem genérica para "email inexistente" e "senha errada" (não revela qual).</td></tr>
   <tr><td>Token</td><td><strong>JWT</strong> assinado com HMAC-SHA256 e a <code>JWT_SECRET</code>. Expira em 8h.</td></tr>
-  <tr><td>Claims</td><td><code>sub</code> (userId), <code>companyId</code>, <code>email</code>. <strong>Nunca</strong> senha. São assinados, mas legíveis (base64) — nada sensível ali.</td></tr>
-  <tr><td>Multi-tenant</td><td>O <code>companyId</code> vem no token; toda query futura filtra por ele (isolamento entre lojas).</td></tr>
-  <tr><td>Segredos</td><td><code>.env</code> (DB e JWT_SECRET). Vai para o <code>.gitignore</code> quando iniciar o git.</td></tr>
+  <tr><td>Claims</td><td><code>sub</code> (userId), <code>companyId</code>, <code>email</code>. <strong>Nunca</strong> senha. Assinadas, mas legíveis (base64) — nada sensível ali.</td></tr>
+  <tr><td>Multi-tenant</td><td>O <code>companyId</code> vem no token; toda query filtra por ele (isolamento entre lojas). No webhook, virá do canal.</td></tr>
+  <tr><td>Segredos</td><td><code>.env</code> (DB, <code>JWT_SECRET</code>, chaves de IA). <strong>Já no <code>.gitignore</code></strong> — git iniciado, <code>.env</code> fora do versionamento (verificado).</td></tr>
 </table>
 <div class="danger"><strong>Atenção:</strong> claims são <strong>assinadas, não criptografadas</strong>. Qualquer um decodifica
 e lê o conteúdo. A assinatura só garante que ninguém alterou. Por isso: nada de segredo nas claims.</div>
 
-<h2>11. Injeção de dependência (DI)</h2>
+<h2>12. Injeção de dependência (DI)</h2>
 <table>
   <tr><th>Lifetime</th><th>Significado</th><th>Quem</th></tr>
   <tr><td><strong>Singleton</strong></td><td>1 instância para o app inteiro (sem estado)</td><td><code>IDatabase</code>, <code>IPasswordHasher</code>, <code>IJwtTokenGenerator</code></td></tr>
-  <tr><td><strong>Scoped</strong></td><td>1 instância por requisição</td><td><code>DbSession</code>, todos os repos e services, <code>AuthService</code></td></tr>
+  <tr><td><strong>Scoped</strong></td><td>1 instância por requisição</td><td><code>DbSession</code>; repos e services de Users/Companies/Auth/Conversations</td></tr>
+  <tr><td><strong>HttpClient tipado</strong></td><td><code>AddHttpClient&lt;IAiClient, X&gt;</code> — gerencia o <code>HttpClient</code> do provedor de IA</td><td><code>GeminiAiClient</code> / <code>GroqAiClient</code> (a troca de provedor é aqui)</td></tr>
   <tr><td><strong>Transient</strong></td><td>1 nova a cada pedido</td><td>(não usado ainda)</td></tr>
 </table>
 <div class="note">O <code>DbSession</code> ser <strong>Scoped</strong> é o que faz o truque da transação funcionar: numa requisição,
 o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, então o que um enche o outro lê.</div>
 
-<h2>12. O produto em funcionamento (Fase 2)</h2>
-<p>Hoje existe só a <strong>porta de entrada</strong> (auth). O coração do produto vem na Fase 2:</p>
-<pre class="diagram">
-  Cliente manda msg no WhatsApp
-        │
-        ▼
-  Webhook  POST /webhook  ............. (módulo WhatsApp)
-        │
-        ▼
-  ConversationService
-     ├─ acha a Company pelo canal/número
-     ├─ busca o histórico (Messages) da conversa ativa
-     ├─ monta o prompt (BotConfig da empresa + histórico)
-     ├─ módulo AI ──► chama a Claude API
-     └─ salva [msg do cliente + resposta] e devolve
-        │
-        ▼
-  Resposta volta pro cliente no WhatsApp
-</pre>
-<ul>
-  <li><strong>Conversa expira por inatividade</strong> (4–8h sem mensagem), não por tempo fixo.</li>
-  <li><strong>System prompt dinâmico:</strong> cada empresa gera seu prompt a partir do <code>BotConfig</code> (nome, segmento, horário, serviços, tom).</li>
-  <li><strong>Canal desacoplado:</strong> o fluxo é agnóstico de WhatsApp (<code>ChannelId</code> + <code>ContactIdentifier</code>) — dá pra plugar Telegram depois.</li>
-</ul>
-
 <h2>13. Roadmap &amp; estado atual</h2>
 <pre class="diagram">
-  FASE 1  Auth / Users / Companies ........ ███████░  registro ✅  login ✅  │ falta trancar rotas
-  FASE 2  WhatsApp + AI + Conversations .... ░░░░░░░░  ◄── o BOT de fato
-  FASE 3  Modules/Barber (1º nicho) ........ ░░░░░░░░
+  FASE 1  Auth / Users / Companies ........ ████████  registro ✅ login ✅ /api/me ✅
+  FASE 2  Shared/AI (Gemini + Groq) ........ ████████  dois provedores e2e ✅
+          Core/Conversations ............... ███████░  fluxo e2e ✅ · falta endurecer (conexão/teto)
+          Core/WhatsApp (webhook) .......... ░░░░░░░░  ◄── conecta o bot ao mundo real
+  FASE 3  Modules/Barber (1º nicho) ........ ░░░░░░░░  ◄── extrair AÇÃO estruturada
   FASE 4  Billing (cobrança) ............... ░░░░░░░░
 </pre>
-<h3>Feito na Fase 1</h3>
+<h3>Feito</h3>
 <p>
 <span class="tag done">Entidades User/Company</span>
 <span class="tag done">Banco + .env + DI</span>
 <span class="tag done">Result&lt;T&gt;</span>
 <span class="tag done">DbSession + transação</span>
-<span class="tag done">Repos (Insert/GetByEmail)</span>
-<span class="tag done">Services</span>
-<span class="tag done">Registro (e2e testado)</span>
+<span class="tag done">Registro e2e</span>
 <span class="tag done">Hash BCrypt</span>
-<span class="tag done">JWT</span>
-<span class="tag done">Login</span>
-<span class="tag done">Build limpo</span>
+<span class="tag done">JWT + /api/me</span>
+<span class="tag done">Login e2e</span>
+<span class="tag done">IAiClient (Gemini + Groq) e2e</span>
+<span class="tag done">Conversations (fluxo completo) e2e</span>
+<span class="tag done">Histórico no banco por cliente</span>
+<span class="tag done">git + README + .gitignore</span>
+</p>
+<h3>Em construção / a endurecer</h3>
+<p>
+<span class="tag wip">Conexão fora da chamada ao LLM</span>
+<span class="tag wip">Teto de histórico</span>
+<span class="tag wip">Expiração por inatividade</span>
 </p>
 
-<h2>14. Próximos passos &amp; pendências</h2>
+<h2>14. Pontos de atenção &amp; próximos passos</h2>
+<h3>Pontos de atenção conhecidos (Conversations)</h3>
+<ul>
+  <li><strong>Conexão presa durante o LLM.</strong> <code>ProcessMessage</code> mantém a conexão do banco aberta
+      ao redor da chamada HTTP ao modelo (segundos). O certo é a conexão viver em dois trechos curtos
+      (escrita antes / escrita depois), com o LLM <strong>fora</strong> — senão o pool esgota sob carga.</li>
+  <li><strong><code>"Erro"</code> persistido — ✅ resolvido.</strong> Agora <code>GenerateReplyAsync</code> <strong>estoura</strong>
+      <code>AiClientException</code> em status ruim/null (não devolve string de erro). O <code>ConversationService</code>
+      captura (<code>catch(AiClientException)</code>) e devolve <code>Result.Failure</code> — nenhuma resposta falsa é gravada.
+      Como a escrita é autocommit, a mensagem do cliente sobrevive à falha da IA.</li>
+  <li><strong>Teto de histórico.</strong> <code>GetMessagesByConversation</code> traz <em>todas</em> as mensagens; sem
+      limite, o prompt cresce sem parar (custo/latência/contexto). Precisa de teto (N mensagens ou janela de tokens).</li>
+  <li><strong>Expiração por inatividade.</strong> Sem <code>LastMessageAt</code>/<code>IsActive</code>, a conversa nunca
+      "fecha". Definido: expira por inatividade (4–8h), não por tempo fixo.</li>
+</ul>
+<h3>Próximos passos</h3>
 <ol>
-  <li><strong>Testar o login e2e</strong> — <code>POST /api/auth/login</code> → 200 com token (conferir claims no jwt.io).</li>
-  <li><strong>Proteger rotas</strong> — middleware <code>JwtBearer</code> + <code>[Authorize]</code>, validando a assinatura com a <code>JWT_SECRET</code>. Ler o <code>companyId</code> do token nas queries.</li>
-  <li><strong>Pacote de erro</strong> — <code>Result.Error</code> virar código semântico; "email já existe" → HTTP <strong>409</strong>.</li>
+  <li><strong>Endurecer o fluxo de Conversa</strong> — resolver os pontos acima (conexão fora do LLM, tratar falha do LLM, teto de histórico).</li>
+  <li><strong>Pacote de erro</strong> — <code>Result.Error</code> virar código semântico; "email já existe" → HTTP <strong>409</strong> (<code>DbException.SqlState=="23000"</code> ou <code>MySqlException.Number==1062</code>).</li>
+  <li><strong>Canal de WhatsApp</strong> — webhook + entidade <code>Channel</code>; <code>companyId</code> a partir do canal (não do body). Idempotência por message-id (WhatsApp reentrega).</li>
+  <li><strong>Extração de ação (function calling)</strong> — a IA decide quando/qual ação e grava <code>Pedido</code>/<code>Agendamento</code> (no <code>Modules/{nicho}</code>). O ponto onde o bot deixa de "conversar" e passa a "registrar".</li>
 </ol>
 <h3>TODOs no código</h3>
 <ul>
-  <li><code>AuthService</code> ainda devolve <code>Result.Failure("Erro ao registrar")</code> (string) → virar código semântico.</li>
-  <li><code>.env</code> precisa entrar no <code>.gitignore</code> quando o git for iniciado.</li>
+  <li><code>AuthService</code> ainda devolve <code>Result.Failure("Erro ao registrar")</code> (string) → código semântico.</li>
+  <li>Leitura das envs JWT repetida (gerador + validador) → centralizar em options.</li>
+  <li>Registro/Login sem validação de entrada (email/senha vazios, formato) — sobem direto pro banco.</li>
+  <li><code>MessageRepository.GetMessagesByConversation</code> passa o <code>@conversationId</code> como <code>Guid</code> cru, enquanto os outros repos passam <code>.ToString()</code> — inconsistência (funciona, mas depende do formato de Guid do driver).</li>
 </ul>
 
 <h2>15. Glossário</h2>
 <table>
   <tr><th>Termo</th><th>O que é</th></tr>
   <tr><td>Multi-tenant</td><td>Vários clientes (lojas) no mesmo banco, isolados por <code>CompanyId</code>.</td></tr>
+  <tr><td>Transacional (o bot)</td><td>A conversa vira uma <strong>ação estruturada</strong> (pedido/agendamento) gravada, não só troca de texto.</td></tr>
   <tr><td>Transação (ACID)</td><td>Conjunto de operações "tudo ou nada": <code>BEGIN</code> → <code>COMMIT</code> (grava) ou <code>ROLLBACK</code> (desfaz).</td></tr>
   <tr><td>DI (Injeção de Dependência)</td><td>Receber colaboradores prontos em vez de criá-los; o container monta tudo.</td></tr>
   <tr><td>Repository</td><td>Camada que só fala SQL com o banco. "Burra" — sem regra de negócio.</td></tr>
   <tr><td>Service</td><td>Camada de domínio: regras, orquestração. Não conhece HTTP.</td></tr>
-  <tr><td>DTO</td><td>Objeto de transporte na borda HTTP (request/response). Ex: <code>RegisterRequest</code>, <code>UserResponse</code>.</td></tr>
+  <tr><td>DTO</td><td>Objeto de transporte na borda (request/response ou entre camadas). Ex: <code>RegisterRequest</code>, <code>ChatMessage</code>.</td></tr>
   <tr><td>Result&lt;T&gt;</td><td>Embrulho de retorno: sucesso (com valor) ou falha (com erro). Genérico — <code>T</code> é o tipo do valor.</td></tr>
   <tr><td>Hash (BCrypt)</td><td>Transformação irreversível da senha, com salt. Não dá pra "descriptografar".</td></tr>
   <tr><td>JWT</td><td>Token assinado que prova quem é o usuário sem consultar o banco a cada request.</td></tr>
   <tr><td>Claim</td><td>Uma afirmação dentro do token (id, companyId, email).</td></tr>
-  <tr><td>Genérico (&lt;T&gt;)</td><td>Tipo "preenchido no uso": <code>Result&lt;User&gt;</code>, <code>Result&lt;string&gt;</code>.</td></tr>
+  <tr><td>LLM stateless</td><td>O modelo não guarda memória. "Memória" = reenviar system prompt + histórico a cada chamada.</td></tr>
+  <tr><td>System prompt</td><td>Instrução-base que define o comportamento do bot; no BotSaaS, dinâmico por empresa.</td></tr>
+  <tr><td>Function calling</td><td>Recurso onde o modelo decide chamar uma "função" (ação) da app — o mecanismo pra extrair pedido/agendamento.</td></tr>
 </table>
 
 <p class="small" style="margin-top:40px; text-align:center; color:#9aa7b3;">
-BotSaaS — Documento de Arquitetura · gerado a partir do PROJETO.md e do código-fonte · Fase 1
+BotSaaS — Documento de Arquitetura · gerado a partir do PROJETO.md e do código-fonte · Auth + IA + Conversations concluídos e testados e2e
 </p>
 
 </body>

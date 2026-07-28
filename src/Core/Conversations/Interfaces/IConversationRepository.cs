@@ -1,5 +1,6 @@
 namespace BotSaaS.Api.Core.Conversations;
 
+// Contract for conversation data access -- talks SQL.
 public interface IConversationRepository
 {
     public Task InsertConversation(Conversation conversation);

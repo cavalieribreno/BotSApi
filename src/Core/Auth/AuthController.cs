@@ -1,6 +1,5 @@
 using BotSaaS.Api.Core.Users;
 using BotSaaS.Api.Shared.Results;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BotSaaS.Api.Core.Auth;

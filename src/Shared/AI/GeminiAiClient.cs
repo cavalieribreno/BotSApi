@@ -58,12 +58,16 @@ public class GeminiAiClient : IAiClient
         };
         
         HttpResponseMessage response = await _httpClient.PostAsJsonAsync(url, requestBody);
-        if (response.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode)
         {
-            GeminiResponse? responseBody = await response.Content.ReadFromJsonAsync<GeminiResponse>();
-            string textoGemini = responseBody!.Candidates[0].Content.Parts[0].Text; // object
-            return textoGemini;
+            throw new AiClientException($"Gemini retornou status: {(int)response.StatusCode}");
         }
-        return "Erro";
+        GeminiResponse? responseBody = await response.Content.ReadFromJsonAsync<GeminiResponse>();
+        if(responseBody is null)
+        {
+            throw new AiClientException($"Gemini retornou null");
+        }
+        string textoGemini = responseBody.Candidates[0].Content.Parts[0].Text; // object
+        return textoGemini;
     }
 }   

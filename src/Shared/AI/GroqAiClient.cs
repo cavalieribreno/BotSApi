@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 
 namespace BotSaaS.Api.Shared.AI;
 
+// Groq implementation of IAiClient (OpenAI-format API): system prompt goes as the first "system" message, assistant role is "assistant".
 public class GroqAiClient : IAiClient
 {
     private readonly HttpClient _httpClient;
@@ -17,6 +18,7 @@ public class GroqAiClient : IAiClient
         _httpClient = httpClient;
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
     }
+    // Sends the system prompt + conversation history to Groq and returns the model's reply.
     public async Task<string> GenerateReplyAsync(string systemPrompt, IReadOnlyList<ChatMessage> history)
     {
         List<object> contents = new List<object>();
@@ -48,12 +50,16 @@ public class GroqAiClient : IAiClient
         };
 
         HttpResponseMessage response = await _httpClient.PostAsJsonAsync(url, requestBody);
-        if (response.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode)
         {
-            GroqResponse? responseBody = await response.Content.ReadFromJsonAsync<GroqResponse>();
-            string textoGroq = responseBody!.Choices[0].Message.Content;
-            return textoGroq;
+            throw new AiClientException($"Groq retornou: {(int)response.StatusCode}");
         }
-        return "Erro";
+        GroqResponse? responseBody = await response.Content.ReadFromJsonAsync<GroqResponse>();
+        if(responseBody is null)
+        {
+            throw new AiClientException($"Groq retornou null");
+        }
+        string textoGroq = responseBody.Choices[0].Message.Content;
+        return textoGroq;
     }
 }

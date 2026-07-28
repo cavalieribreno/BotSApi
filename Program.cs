@@ -1,6 +1,7 @@
 using System.Text;
 using BotSaaS.Api.Core.Auth;
 using BotSaaS.Api.Core.Companies;
+using BotSaaS.Api.Core.Conversations;
 using BotSaaS.Api.Core.Users;
 using BotSaaS.Api.Shared.AI;
 using BotSaaS.Api.Shared.Database;
@@ -16,7 +17,6 @@ DotNetEnv.Env.Load();
 // Dependencies 
 builder.Services.AddHttpClient<IAiClient, GroqAiClient>();
 builder.Services.AddScoped<DbSession>();
-builder.Services.AddSingleton<ChatMemoryAI>();
 builder.Services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<IDatabase, MySqlDatabase>();
@@ -25,7 +25,9 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICompaniesRepository, CompaniesRepository>();
 builder.Services.AddScoped<ICompaniesService, CompaniesService>();
-
+builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
+builder.Services.AddScoped<IMessageRepository, MessageRepository>();
+builder.Services.AddScoped<IConversationService, ConversationService>();
 
 // JWT auth: validates token signature/issuer/audience/expiry on protected routes.
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

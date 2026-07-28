@@ -3,6 +3,7 @@ namespace BotSaaS.Api.Core.Conversations;
 using System.Data.Common;
 using BotSaaS.Api.Shared.Database;
 
+// Dumb repo: runs SQL on the connection/transaction held by the shared session.
 public class ConversationRepository : IConversationRepository
 {
     private readonly DbSession _dbSession;
@@ -22,6 +23,7 @@ public class ConversationRepository : IConversationRepository
 
         await command.ExecuteNonQueryAsync();
     }
+    // Find the thread for a (company, phone) pair. null = new customer, no thread yet.
     public async Task<Conversation?> GetConversationByCompanyAndPhone(Guid companyId, string phone)
     {
         using DbCommand command = _dbSession.Connection.CreateCommand();

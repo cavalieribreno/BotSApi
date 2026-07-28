@@ -4,6 +4,7 @@ using BotSaaS.Api.Shared.Database;
 
 namespace BotSaaS.Api.Core.Conversations;
 
+// Dumb repo: runs SQL on the connection/transaction held by the shared session.
 public class MessageRepository : IMessageRepository
 {
     private readonly DbSession _dbSession;
@@ -26,6 +27,7 @@ public class MessageRepository : IMessageRepository
         await command.ExecuteNonQueryAsync();
     }
 
+    // Full history, oldest-first (what the LLM needs to reconstruct context). No cap yet.
     public async Task<List<Message>> GetMessagesByConversation(Guid conversationId)
     {
         List<Message> messages = new List<Message>();

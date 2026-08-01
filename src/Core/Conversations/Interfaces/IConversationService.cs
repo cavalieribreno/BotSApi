@@ -6,4 +6,5 @@ namespace BotSaaS.Api.Core.Conversations;
 public interface IConversationService
 {
     public Task<Result<string>> ProcessMessage(Guid companyId, string customerPhone, string messageText);
+    public Task<Result<ConversationMessages>> GetMessages(Guid companyId, Guid conversationId);
 }

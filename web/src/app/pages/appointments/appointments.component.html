@@ -31,6 +31,7 @@
                 <button class="confirm" (click)="changeStatus(a.id, 'Confirmed')">Confirmar</button>
                 <button class="complete" (click)="changeStatus(a.id, 'Completed')">Concluir</button>
                 <button class="cancel" (click)="changeStatus(a.id, 'Cancelled')">Cancelar</button>
+                <a [routerLink]="['/conversations', a.conversationId]" class="chat-link">Ver conversa</a>
               </div>
             </td>
           </tr>

@@ -33,4 +33,30 @@ public class ConversationController : ControllerBase
 
         return Ok(new { reply = result.Value });
     }
+
+    // Owner's view: the messages of a conversation (tenant-scoped). Used by the panel to show the chat behind an appointment.
+    [Authorize]
+    [HttpGet("{id}/messages")]
+    public async Task<IActionResult> GetMessages(Guid id)
+    {
+        string? companyId = User.FindFirstValue("companyId");
+        if (!Guid.TryParse(companyId, out Guid companyGuid))
+        {
+            return Unauthorized(new { error = "Empresa inválida" });
+        }
+
+        Result<ConversationMessages> result = await _conversationService.GetMessages(companyGuid, id);
+        if (!result.IsSuccess)
+        {
+            return NotFound(new { error = result.Error });
+        }
+
+        ConversationMessages detail = result.Value!;
+        List<MessageResponse> messages = new List<MessageResponse>();
+        foreach (Message message in detail.Messages)
+        {
+            messages.Add(new MessageResponse(message.Role.ToString(), message.Content, message.CreatedAt));
+        }
+        return Ok(new ConversationDetailResponse(detail.Conversation.CustomerPhone, messages));
+    }
 }

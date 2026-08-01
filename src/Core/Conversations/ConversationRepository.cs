@@ -43,4 +43,25 @@ public class ConversationRepository : IConversationRepository
             CreatedAt = (DateTime)reader["created_at"]
         };
     }
+
+    // Get a conversation by id, scoped to a company. null = not found / not this company (tenant guard).
+    public async Task<Conversation?> GetConversationByIdAndCompany(Guid id, Guid companyId)
+    {
+        using DbCommand command = _dbSession.Connection.CreateCommand();
+        command.Transaction = _dbSession.Transaction;
+        command.CommandText = "SELECT id, company_id, customer_phone, created_at FROM conversations WHERE id = @id AND company_id = @company_id";
+        command.AddParameter("@id", id.ToString());
+        command.AddParameter("@company_id", companyId.ToString());
+
+        using DbDataReader reader = await command.ExecuteReaderAsync();
+        if (!await reader.ReadAsync()) return null;
+
+        return new Conversation
+        {
+            Id = (Guid)reader["id"],
+            CompanyId = (Guid)reader["company_id"],
+            CustomerPhone = (string)reader["customer_phone"],
+            CreatedAt = (DateTime)reader["created_at"]
+        };
+    }
 }

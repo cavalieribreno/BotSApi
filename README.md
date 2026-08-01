@@ -50,7 +50,7 @@ Decisões de design que guiam o código:
 - ✅ Conversas com histórico persistido no banco (memória por cliente) — testado e2e
 - ✅ Extração de ação via **function calling** — o modelo extrai um `Agendamento` estruturado da conversa e **grava no banco** (testado e2e)
 - ✅ Visão do dono — `GET /api/appointments` lista os agendamentos da empresa (tenant do JWT), testado e2e
-- ✅ **Painel do dono em Angular** — login + tabela de agendamentos + **gestão de status** (confirmar/concluir/cancelar), testado e2e
+- ✅ **Painel do dono em Angular** — login + tabela de agendamentos + **gestão de status** (confirmar/concluir/cancelar) + **ver a conversa** que gerou cada agendamento, testado e2e
 - 🔜 Canal de WhatsApp, cobrança
 
 ## Endpoints
@@ -63,6 +63,7 @@ Decisões de design que guiam o código:
 | `POST` | `/api/conversations` | Processa uma mensagem do cliente e devolve a resposta da IA (requer Bearer; entrada dev/token — produção será o webhook) |
 | `GET`  | `/api/appointments` | Lista os agendamentos da empresa do requisitante (requer Bearer; a "visão do dono") |
 | `PATCH` | `/api/appointments/{id}/status` | Atualiza o status de um agendamento (requer Bearer; tenant-scoped) |
+| `GET`  | `/api/conversations/{id}/messages` | Mensagens de uma conversa (requer Bearer; tenant-scoped) — o chat por trás de um agendamento |
 
 ## Como rodar
 

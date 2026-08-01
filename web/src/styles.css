@@ -70,3 +70,18 @@ td { font-size: 14px; }
 .actions .complete { background: #1e88a8; }
 .actions .cancel { background: #d93025; }
 .actions .cancel:hover { background: #b7271b; }
+
+.chat-link { color: #1e88a8; text-decoration: none; font-size: 12px; align-self: center; margin-left: 4px; }
+.chat-link:hover { text-decoration: underline; }
+
+/* Conversation (chat) */
+.ghost-link { color: #1e88a8; text-decoration: none; font-size: 14px; }
+.chat { display: flex; flex-direction: column; gap: 12px; max-width: 640px; }
+.msg { display: flex; flex-direction: column; max-width: 75%; }
+.msg.mine { align-self: flex-end; align-items: flex-end; }
+.msg.theirs { align-self: flex-start; align-items: flex-start; }
+.msg .sender { font-size: 11px; color: #5a6b7b; margin-bottom: 3px; }
+.msg .bubble { padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
+.msg.mine .bubble { background: #1e88a8; color: #fff; border-bottom-right-radius: 3px; }
+.msg.theirs .bubble { background: #fff; color: #1f2430; border: 1px solid #e0e6eb; border-bottom-left-radius: 3px; }
+.msg .time { font-size: 11px; color: #9aa7b3; margin-top: 3px; }

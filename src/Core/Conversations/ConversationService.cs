@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Globalization;
 using System.Text.Json;
 using BotSaaS.Api.Core.Scheduling;
 using BotSaaS.Api.Shared.AI;
@@ -81,8 +82,15 @@ public class ConversationService : IConversationService
         AiResponse aiResponse;
         try
         {
-            string systemPrompt = Environment.GetEnvironmentVariable("SYSTEM_PROMPT")
+            string baseSystemPrompt = Environment.GetEnvironmentVariable("SYSTEM_PROMPT")
                 ?? throw new InvalidOperationException("System prompt não definido");
+
+            // Inject today's date (business-local, not UTC) so the model can resolve relative dates like "amanhã".
+            DateTime now = DateTime.Now;
+            CultureInfo ptBr = new CultureInfo("pt-BR");
+            string dateContext = $"Hoje é {now.ToString("dddd, dd 'de' MMMM 'de' yyyy", ptBr)} ({now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}). " +
+                "Use esta data para resolver referências como 'hoje', 'amanhã', 'sexta que vem'. A data de um agendamento deve estar no formato AAAA-MM-DD.";
+            string systemPrompt = $"{dateContext}\n\n{baseSystemPrompt}";
 
             // Tools the model may call. Flat for now; varies per segment/niche later.
             // TODO: move tool ownership (definition + args + handler) into the Scheduling module. Conversations should just route tool calls, not know appointment-shaped data.
@@ -90,12 +98,12 @@ public class ConversationService : IConversationService
             {
                 new ToolDefinition(
                     "registrar_agendamento",
-                    "Registra um agendamento quando o cliente confirmar serviço, data e hora. Só chame quando tiver todas as informações.",
+                    "Registra um agendamento. Só chame quando tiver serviço, nome, a DATA e o HORÁRIO EXATO. Se o cliente der algo vago como 'de manhã' ou 'à tarde', pergunte o horário específico ANTES de chamar.",
                     new List<ToolParameter>
                     {
                         new ToolParameter("servico", "string", "O serviço desejado, ex: corte de cabelo", true),
                         new ToolParameter("data", "string", "A data no formato AAAA-MM-DD", true),
-                        new ToolParameter("hora", "string", "A hora no formato HH:MM (24h)", true),
+                        new ToolParameter("hora", "string", "O horário EXATO no formato HH:MM 24h, ex: 09:00. Nunca use termos vagos como 'de manhã'.", true),
                         new ToolParameter("nome", "string", "O nome do cliente", true)
                     }
                 )
@@ -164,5 +172,22 @@ public class ConversationService : IConversationService
         }
 
         return $"Pronto, {args.Nome}! Seu {args.Servico} ficou agendado para {args.Data} às {args.Hora}.";
+    }
+
+    // Owner's view: a conversation + its messages, tenant-scoped. Verifies the conversation is the company's -> null = 404.
+    public async Task<Result<ConversationMessages>> GetMessages(Guid companyId, Guid conversationId)
+    {
+        using DbConnection connection = _databaseConnection.CreateConnection();
+        _dbSession.Connection = connection;
+        await connection.OpenAsync();
+
+        Conversation? conversation = await _conversationRepository.GetConversationByIdAndCompany(conversationId, companyId);
+        if (conversation is null)
+        {
+            return Result<ConversationMessages>.Failure("Conversa não encontrada");
+        }
+
+        List<Message> messages = await _messageRepository.GetMessagesByConversation(conversationId);
+        return Result<ConversationMessages>.Success(new ConversationMessages(conversation, messages));
     }
 }

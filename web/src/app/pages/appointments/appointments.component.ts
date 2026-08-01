@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AppointmentService } from '../../services/appointment.service';
 import { AuthService } from '../../services/auth.service';
 import { Appointment } from '../../models/appointment';
@@ -8,7 +8,7 @@ import { Appointment } from '../../models/appointment';
 // Owner's view: loads the company's appointments and shows them in a table.
 @Component({
   selector: 'app-appointments',
-  imports: [DatePipe],
+  imports: [DatePipe, RouterLink],
   templateUrl: './appointments.component.html'
 })
 export class AppointmentsComponent implements OnInit {

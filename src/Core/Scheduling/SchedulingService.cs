@@ -1,15 +1,21 @@
+using System.Data.Common;
 using System.Globalization;
+using BotSaaS.Api.Shared.Database;
 using BotSaaS.Api.Shared.Results;
 
 namespace BotSaaS.Api.Core.Scheduling;
 
-// Owns "what a valid Appointment is": parses date+time, builds and persists it.
+// Scheduling domain: create an appointment (from a conversation) and list a company's appointments.
 public class SchedulingService : ISchedulingService
 {
     private readonly IAppointmentRepository _appointmentRepository;
-    public SchedulingService(IAppointmentRepository appointmentRepository)
+    private readonly IDatabase _databaseConnection;
+    private readonly DbSession _dbSession;
+    public SchedulingService(IAppointmentRepository appointmentRepository, IDatabase databaseConnection, DbSession dbSession)
     {
         _appointmentRepository = appointmentRepository;
+        _databaseConnection = databaseConnection;
+        _dbSession = dbSession;
     }
 
     // Builds a valid Appointment from primitives (parses "yyyy-MM-dd" + "HH:mm" into ScheduledAt, business-local naive time) and persists it.
@@ -35,5 +41,15 @@ public class SchedulingService : ISchedulingService
 
         await _appointmentRepository.InsertAppointment(appointment);
         return Result<Appointment>.Success(appointment);
+    }
+
+    // Owner's view: all appointments of a company. Entry point (from a controller), so it opens its own connection.
+    public async Task<List<Appointment>> GetAppointments(Guid companyId)
+    {
+        using DbConnection connection = _databaseConnection.CreateConnection();
+        _dbSession.Connection = connection;
+        await connection.OpenAsync();
+
+        return await _appointmentRepository.GetAppointmentsByCompany(companyId);
     }
 }

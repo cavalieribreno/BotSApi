@@ -4,4 +4,5 @@ namespace BotSaaS.Api.Core.Scheduling;
 public interface IAppointmentRepository
 {
     public Task InsertAppointment(Appointment appointment);
+    public Task<List<Appointment>> GetAppointmentsByCompany(Guid companyId);
 }

@@ -28,4 +28,33 @@ public class AppointmentRepository : IAppointmentRepository
 
         await command.ExecuteNonQueryAsync();
     }
+
+    // All appointments of a company, soonest-first. Lista vazia se nenhum, nunca null.
+    public async Task<List<Appointment>> GetAppointmentsByCompany(Guid companyId)
+    {
+        List<Appointment> appointments = new List<Appointment>();
+
+        using DbCommand command = _dbSession.Connection.CreateCommand();
+        command.Transaction = _dbSession.Transaction;
+        command.CommandText = "SELECT id, company_id, conversation_id, service_name, customer_name, scheduled_at, status, created_at FROM appointments WHERE company_id = @company_id ORDER BY scheduled_at";
+        command.AddParameter("@company_id", companyId.ToString());
+
+        using DbDataReader reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            Appointment appointment = new Appointment
+            {
+                Id = (Guid)reader["id"],
+                CompanyId = (Guid)reader["company_id"],
+                ConversationId = (Guid)reader["conversation_id"],
+                ServiceName = (string)reader["service_name"],
+                CustomerName = (string)reader["customer_name"],
+                ScheduledAt = (DateTime)reader["scheduled_at"],
+                Status = (AppointmentStatus)(int)reader["status"],
+                CreatedAt = (DateTime)reader["created_at"]
+            };
+            appointments.Add(appointment);
+        }
+        return appointments;
+    }
 }

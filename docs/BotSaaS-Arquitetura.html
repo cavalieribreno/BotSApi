@@ -199,7 +199,7 @@ src/
   <tr><td><strong>Users</strong></td><td>Dono da entidade User e da gestão (criar, buscar por email; rota <code>/api/me</code>). Futuro: perfil, listar.</td><td>User, UserService, UserRepository, UserController</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Companies</strong></td><td>Os tenants. Dono de "o que é uma Company válida". Futuro: BotConfig, settings.</td><td>Company, CompaniesService, CompaniesRepository</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Conversations</strong></td><td>O fluxo do bot: acha/cria a conversa do cliente, salva mensagens, monta o histórico, chama a IA e salva a resposta. Substitui a memória em RAM por persistência no banco (por cliente). Entrada via <code>ConversationController</code> (<code>POST /api/conversations</code>, protegido).</td><td>Conversation, Message, ConversationService, ConversationController, 2 repositórios</td><td><span class="tag done">e2e</span></td></tr>
-  <tr><td><strong>Scheduling</strong></td><td>Os agendamentos — a <strong>ação transacional</strong>. Dono de "o que é um <code>Appointment</code> válido" (parseia data+hora, valida). Grava o registro que o dono vai ver.</td><td>Appointment, AppointmentStatus, SchedulingService, AppointmentRepository</td><td><span class="tag done">e2e</span></td></tr>
+  <tr><td><strong>Scheduling</strong></td><td>Os agendamentos — a <strong>ação transacional</strong>. Dono de "o que é um <code>Appointment</code> válido" (parseia data+hora, valida) e da <strong>visão do dono</strong> (<code>GET /api/appointments</code>, tenant do JWT).</td><td>Appointment, AppointmentStatus, SchedulingService, AppointmentRepository, AppointmentController</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Shared/AI</strong></td><td>Costura neutra com o LLM. <code>IAiClient</code> esconde o provedor; traduz <code>systemPrompt</code>+histórico+<strong>tools</strong>, e devolve <strong>texto ou tool call</strong> (<code>AiResponse</code>).</td><td>IAiClient, Gemini/GroqAiClient, AiResponse, ToolDefinition, ChatMessage</td><td><span class="tag done">e2e</span></td></tr>
 </table>
 <p><strong>Por que Auth e Users são separados?</strong> Autenticação (login/registro/senha) é um concern;
@@ -480,6 +480,7 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 <span class="tag done">Validação de entrada (DataAnnotations)</span>
 <span class="tag done">Function calling + Scheduling e2e</span>
 <span class="tag done">Agendamento transacional (conversa → banco)</span>
+<span class="tag done">Visão do dono (GET /appointments) e2e</span>
 <span class="tag done">git + README + .gitignore</span>
 </p>
 <h3>Em construção / a endurecer</h3>

@@ -48,7 +48,8 @@ Decisões de design que guiam o código:
 - ✅ Integração com IA respondendo via API — dois provedores trocáveis por DI (Gemini e Groq/Llama)
 - ✅ Conversas com histórico persistido no banco (memória por cliente) — testado e2e
 - ✅ Extração de ação via **function calling** — o modelo extrai um `Agendamento` estruturado da conversa e **grava no banco** (testado e2e)
-- 🔜 Canal de WhatsApp, painel do dono, cobrança
+- ✅ Visão do dono — `GET /api/appointments` lista os agendamentos da empresa (tenant do JWT), testado e2e
+- 🔜 Painel visual (frontend), canal de WhatsApp, cobrança
 
 ## Endpoints
 
@@ -58,6 +59,7 @@ Decisões de design que guiam o código:
 | `POST` | `/api/auth/login` | Autentica e devolve o JWT |
 | `GET`  | `/api/me` | Identidade do requisitante (requer Bearer) |
 | `POST` | `/api/conversations` | Processa uma mensagem do cliente e devolve a resposta da IA (requer Bearer; entrada dev/token — produção será o webhook) |
+| `GET`  | `/api/appointments` | Lista os agendamentos da empresa do requisitante (requer Bearer; a "visão do dono") |
 
 ## Como rodar
 

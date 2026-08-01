@@ -16,8 +16,9 @@ public class GeminiAiClient : IAiClient
             ?? throw new InvalidOperationException("GEMINI_MODEL não definido");            
     }
 
-    // Sends the system prompt + conversation history to Gemini and returns the model's reply.
-    public async Task<string> GenerateReplyAsync(string systemPrompt, IReadOnlyList<ChatMessage> history)
+    // Sends the system prompt + conversation history to Gemini and returns the reply as text.
+    // TODO: 'tools' is ignored -- Gemini tool calling not implemented yet. Switching DI to Gemini disables action extraction.
+    public async Task<AiResponse> GenerateReplyAsync(string systemPrompt, IReadOnlyList<ChatMessage> history, IReadOnlyList<ToolDefinition> tools)
     {
         // Map our history to Gemini's "contents" format. Gemini names the assistant "model", not "assistant".
         List<object> contents = new List<object>();
@@ -68,6 +69,6 @@ public class GeminiAiClient : IAiClient
             throw new AiClientException($"Gemini retornou null");
         }
         string textoGemini = responseBody.Candidates[0].Content.Parts[0].Text; // object
-        return textoGemini;
+        return new TextReply(textoGemini);
     }
 }   

@@ -293,8 +293,8 @@ Quando vários services dividirem transação, o <code>DbSession</code> vira UoW
 <p>Trocar a tecnologia (MySQL→Postgres, BCrypt→Argon2, Gemini→Groq) custa <strong>uma linha na DI</strong>.</p>
 
 <h3>7.5 IA neutra — um contrato, dois provedores</h3>
-<p>O contrato é único e burro: <code>Task&lt;string&gt; GenerateReplyAsync(string systemPrompt, IReadOnlyList&lt;ChatMessage&gt; history)</code>.
-O client só recebe o prompt-base + o histórico e devolve o texto. Quem monta o prompt e persiste o histórico é o Core.
+<p>O contrato é único e burro: <code>Task&lt;AiResponse&gt; GenerateReplyAsync(string systemPrompt, IReadOnlyList&lt;ChatMessage&gt; history, IReadOnlyList&lt;ToolDefinition&gt; tools)</code>.
+O client recebe o prompt-base, o histórico e as ferramentas disponíveis, e devolve um <code>AiResponse</code> — que é <strong>ou um texto</strong> (<code>TextReply</code>) <strong>ou um pedido de ferramenta</strong> (<code>ToolCallReply</code>). Quem monta o prompt, define as tools e persiste o histórico é o Core.
 Cada implementação traduz isso pro formato da sua API — e as diferenças <strong>provam</strong> o valor da abstração:</p>
 <table>
   <tr><th></th><th>Gemini</th><th>Groq (formato OpenAI)</th></tr>
@@ -310,6 +310,11 @@ Trocar Gemini ↔ Groq é <strong>uma linha</strong> no <code>Program.cs</code> 
 nenhum caller muda. É a prova concreta de que a abstração não é enfeite.</div>
 <p class="small"><strong>LLM é stateless:</strong> o modelo não tem memória. "Memória" = reenviar o system prompt + o histórico
 inteiro a cada chamada. Por isso o histórico precisa viver em algum lugar (o banco) e ter um teto (senão o custo e a latência crescem sem limite).</p>
+<div class="note"><strong>Function calling (em construção):</strong> o contrato evoluiu de <code>Task&lt;string&gt;</code> para <code>Task&lt;AiResponse&gt;</code> para o modelo poder, além de responder texto,
+<strong>pedir uma ação estruturada</strong> (ex: <code>registrar_agendamento</code> com <code>servico/data/hora/nome</code>). As ferramentas vêm do <strong>Core</strong>
+(tipos neutros <code>ToolDefinition</code>/<code>ToolParameter</code>, montados por empresa/nicho no futuro); o client só <strong>formata</strong> pro provedor (Groq: <code>tools</code>/<code>tool_calls</code>).
+Tool = <strong>ação/verbo</strong>; o serviço é um <strong>parâmetro</strong>, não uma tool por item. <strong>Recebimento provado e2e no Groq</strong> (modelo extraiu os 4 args sem alucinar);
+o Gemini ainda <strong>ignora</strong> tools (dormente). Falta o domínio (gravar o <code>Appointment</code>) + o loop multi-turno.</div>
 
 <h3>7.6 System prompt dinâmico (por empresa)</h3>
 <p>O prompt final é <strong>por tenant</strong>: cada empresa gera o seu a partir do <code>BotConfig</code>
@@ -425,9 +430,10 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 <pre class="diagram">
   FASE 1  Auth / Users / Companies ........ ████████  registro ✅ login ✅ /api/me ✅
   FASE 2  Shared/AI (Gemini + Groq) ........ ████████  dois provedores e2e ✅
-          Core/Conversations ............... ███████░  fluxo e2e ✅ · falta endurecer (conexão/teto)
+          Core/Conversations ............... ████████  fluxo e2e ✅ · conexão fora do LLM ✅
+          Function calling (recebimento) ... ███████░  tool call provado e2e ✅ · domínio pendente
           Core/WhatsApp (webhook) .......... ░░░░░░░░  ◄── conecta o bot ao mundo real
-  FASE 3  Modules/Barber (1º nicho) ........ ░░░░░░░░  ◄── extrair AÇÃO estruturada
+  FASE 3  Modules/Barber (1º nicho) ........ ░░░░░░░░  ◄── gravar o Agendamento (domínio)
   FASE 4  Billing (cobrança) ............... ░░░░░░░░
 </pre>
 <h3>Feito</h3>
@@ -443,11 +449,14 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 <span class="tag done">IAiClient (Gemini + Groq) e2e</span>
 <span class="tag done">Conversations (fluxo completo) e2e</span>
 <span class="tag done">Histórico no banco por cliente</span>
+<span class="tag done">Conexão fora do LLM</span>
+<span class="tag done">Validação de entrada (DataAnnotations)</span>
+<span class="tag done">Function calling: recebimento e2e</span>
 <span class="tag done">git + README + .gitignore</span>
 </p>
 <h3>Em construção / a endurecer</h3>
 <p>
-<span class="tag wip">Conexão fora da chamada ao LLM</span>
+<span class="tag wip">Function calling: domínio (Appointment) + wiring</span>
 <span class="tag wip">Teto de histórico</span>
 <span class="tag wip">Expiração por inatividade</span>
 </p>

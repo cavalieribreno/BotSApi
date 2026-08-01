@@ -18,8 +18,8 @@ public class GroqAiClient : IAiClient
         _httpClient = httpClient;
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
     }
-    // Sends the system prompt + conversation history to Groq and returns the model's reply.
-    public async Task<string> GenerateReplyAsync(string systemPrompt, IReadOnlyList<ChatMessage> history)
+    // Sends the system prompt + conversation history to Groq and returns the model's reply or tool call.
+    public async Task<AiResponse> GenerateReplyAsync(string systemPrompt, IReadOnlyList<ChatMessage> history, IReadOnlyList<ToolDefinition> tools)
     {
         List<object> contents = new List<object>();
         contents.Add( new { role = "system", content = systemPrompt});
@@ -43,10 +43,43 @@ public class GroqAiClient : IAiClient
         }
         string url = $"https://api.groq.com/openai/v1/chat/completions";
 
+        // Translate the neutral tool definitions into Groq's (OpenAI) tools format.
+        List<object> toolsPayload = new List<object>();
+        foreach (ToolDefinition tool in tools)
+        {
+            // Dictionary (not anonymous object): "properties" keys are the param names, known only at runtime -> serializes to a JSON object keyed by name.
+            Dictionary<string, object> properties = new Dictionary<string, object>();
+            List<string> required = new List<string>();
+            foreach (ToolParameter parameter in tool.Parameters)
+            {
+                properties[parameter.Name] = new { type = parameter.Type, description = parameter.Description };
+                if (parameter.Required)
+                {
+                    required.Add(parameter.Name);
+                }
+            }
+            toolsPayload.Add(new
+            {
+                type = "function",
+                function = new
+                {
+                    name = tool.Name,
+                    description = tool.Description,
+                    parameters = new
+                    {
+                        type = "object",
+                        properties = properties,
+                        required = required
+                    }
+                }
+            });
+        }
+
         var requestBody = new
         {
             model = _modelGroq,
-            messages = contents
+            messages = contents,
+            tools = toolsPayload
         };
 
         HttpResponseMessage response = await _httpClient.PostAsJsonAsync(url, requestBody);
@@ -59,7 +92,18 @@ public class GroqAiClient : IAiClient
         {
             throw new AiClientException($"Groq retornou null");
         }
-        string textoGroq = responseBody.Choices[0].Message.Content;
-        return textoGroq;
+
+        // model asked to call a tool - surface it neutrally (Core decides what to do)
+        GroqMessage groqMessage = responseBody.Choices[0].Message;
+        if(groqMessage.ToolCalls is not null && groqMessage.ToolCalls.Count > 0)
+        {
+            GroqFunction function = groqMessage.ToolCalls[0].Function;
+            return new ToolCallReply(function.Name, function.Arguments);
+        }
+        // plain text reply
+        else
+        {
+            return new TextReply(groqMessage.Content ?? "");
+        }
     }
 }

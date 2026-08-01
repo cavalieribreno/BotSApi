@@ -74,17 +74,48 @@ public class ConversationService : IConversationService
         }
 
         // 2) LLM - no DB connection open here
-        string response;
+        AiResponse aiResponse;
         try
         {
             string systemPrompt = Environment.GetEnvironmentVariable("SYSTEM_PROMPT")
                 ?? throw new InvalidOperationException("System prompt não definido");
-            
-            response = await _aiClient.GenerateReplyAsync(systemPrompt, chatHistory);
+
+            // Tools the model may call. Flat for now; varies per segment/niche later.
+            List<ToolDefinition> tools = new List<ToolDefinition>
+            {
+                new ToolDefinition(
+                    "registrar_agendamento",
+                    "Registra um agendamento quando o cliente confirmar serviço, data e hora. Só chame quando tiver todas as informações.",
+                    new List<ToolParameter>
+                    {
+                        new ToolParameter("servico", "string", "O serviço desejado, ex: corte de cabelo", true),
+                        new ToolParameter("data", "string", "A data no formato AAAA-MM-DD", true),
+                        new ToolParameter("hora", "string", "A hora no formato HH:MM (24h)", true),
+                        new ToolParameter("nome", "string", "O nome do cliente", true)
+                    }
+                )
+            };
+
+            aiResponse = await _aiClient.GenerateReplyAsync(systemPrompt, chatHistory, tools);
         }
         catch (AiClientException)
         {
             return Result<string>.Failure("Erro ao gerar resposta da IA");
+        }
+
+        // text or tool call
+        string response;
+        if(aiResponse is TextReply text)
+        {
+            response = text.Text;
+        } 
+        else if(aiResponse is ToolCallReply)
+        {
+           throw new NotImplementedException("tool call não tratado");
+        }
+        else
+        {
+            throw new InvalidOperationException();
         }
 
         // 3) write the reply - open, write, close

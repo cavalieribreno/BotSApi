@@ -47,7 +47,8 @@ Decisões de design que guiam o código:
 - ✅ Rota protegida lendo a identidade/tenant das claims do token
 - ✅ Integração com IA respondendo via API — dois provedores trocáveis por DI (Gemini e Groq/Llama)
 - ✅ Conversas com histórico persistido no banco (memória por cliente) — testado e2e
-- 🔜 Extração de ação estruturada (function calling), canal de WhatsApp, painel do dono, cobrança
+- 🔨 Extração de ação via **function calling** (tool calling) — o modelo extrai um `Agendamento` estruturado da conversa; recebimento provado e2e, domínio em construção
+- 🔜 Canal de WhatsApp, painel do dono, cobrança
 
 ## Endpoints
 

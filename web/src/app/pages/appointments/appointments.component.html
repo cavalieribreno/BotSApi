@@ -1,0 +1,41 @@
+<div class="page">
+  <header>
+    <h1>Agendamentos</h1>
+    <button class="ghost" (click)="logout()">Sair</button>
+  </header>
+
+  @if (loading()) {
+    <p class="muted">Carregando...</p>
+  } @else if (appointments().length === 0) {
+    <p class="muted">Nenhum agendamento ainda.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Serviço</th>
+          <th>Cliente</th>
+          <th>Quando</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (a of appointments(); track a.id) {
+          <tr>
+            <td>{{ a.serviceName }}</td>
+            <td>{{ a.customerName }}</td>
+            <td>{{ a.scheduledAt | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td>{{ statusLabel(a.status) }}</td>
+            <td>
+              <div class="actions">
+                <button class="confirm" (click)="changeStatus(a.id, 'Confirmed')">Confirmar</button>
+                <button class="complete" (click)="changeStatus(a.id, 'Completed')">Concluir</button>
+                <button class="cancel" (click)="changeStatus(a.id, 'Cancelled')">Cancelar</button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

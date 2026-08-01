@@ -16,6 +16,7 @@ e isso vira um **registro estruturado** que o dono do negócio acompanha num pai
 | Acesso a dados | **ADO.NET puro** (sem ORM/Dapper) + driver MySqlConnector |
 | Auth | JWT próprio (HMAC-SHA256) + BCrypt |
 | IA | Google Gemini ou Groq/Llama (atrás de interface neutra `IAiClient`, trocável) |
+| Frontend | Angular 21 (standalone, signals) — painel do dono |
 
 ## Arquitetura
 
@@ -49,7 +50,8 @@ Decisões de design que guiam o código:
 - ✅ Conversas com histórico persistido no banco (memória por cliente) — testado e2e
 - ✅ Extração de ação via **function calling** — o modelo extrai um `Agendamento` estruturado da conversa e **grava no banco** (testado e2e)
 - ✅ Visão do dono — `GET /api/appointments` lista os agendamentos da empresa (tenant do JWT), testado e2e
-- 🔜 Painel visual (frontend), canal de WhatsApp, cobrança
+- ✅ **Painel do dono em Angular** — login + tabela de agendamentos + **gestão de status** (confirmar/concluir/cancelar), testado e2e
+- 🔜 Canal de WhatsApp, cobrança
 
 ## Endpoints
 
@@ -60,6 +62,7 @@ Decisões de design que guiam o código:
 | `GET`  | `/api/me` | Identidade do requisitante (requer Bearer) |
 | `POST` | `/api/conversations` | Processa uma mensagem do cliente e devolve a resposta da IA (requer Bearer; entrada dev/token — produção será o webhook) |
 | `GET`  | `/api/appointments` | Lista os agendamentos da empresa do requisitante (requer Bearer; a "visão do dono") |
+| `PATCH` | `/api/appointments/{id}/status` | Atualiza o status de um agendamento (requer Bearer; tenant-scoped) |
 
 ## Como rodar
 
@@ -77,6 +80,14 @@ Decisões de design que guiam o código:
 
 A API sobe em `http://localhost:5069`.
 
+**Frontend (painel do dono):**
+```bash
+cd web
+npm install
+ng serve
+```
+Abre em `http://localhost:4200`. Precisa do backend no ar (CORS já libera `localhost:4200`).
+
 ## Estrutura
 
 ```
@@ -92,4 +103,6 @@ src/
     ├── Security/    hash de senha + JWT
     ├── Database/    conexão e sessão de transação
     └── AI/          cliente de IA (Gemini e Groq, atrás de IAiClient)
+
+web/                 painel do dono em Angular (login + agendamentos + gestão de status)
 ```

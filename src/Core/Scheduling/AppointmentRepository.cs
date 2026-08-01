@@ -57,4 +57,17 @@ public class AppointmentRepository : IAppointmentRepository
         }
         return appointments;
     }
+
+    // Updates a company's appointment status. Returns rows affected (0 = not found / not this company).
+    public async Task<int> UpdateStatus(Guid appointmentId, Guid companyId, AppointmentStatus status)
+    {
+        using DbCommand command = _dbSession.Connection.CreateCommand();
+        command.Transaction = _dbSession.Transaction;
+        command.CommandText = "UPDATE appointments SET status = @status WHERE id = @id AND company_id = @company_id";
+        command.AddParameter("@status", (int)status);
+        command.AddParameter("@id", appointmentId.ToString());
+        command.AddParameter("@company_id", companyId.ToString());
+
+        return await command.ExecuteNonQueryAsync();
+    }
 }

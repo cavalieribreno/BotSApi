@@ -1,0 +1,14 @@
+<div class="card">
+  <h1>BotSaaS</h1>
+  <p class="sub">Painel do dono</p>
+
+  <form (ngSubmit)="onSubmit()">
+    <input type="email" name="email" placeholder="Email" [(ngModel)]="email" required />
+    <input type="password" name="password" placeholder="Senha" [(ngModel)]="password" required />
+    <button type="submit">Entrar</button>
+  </form>
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+</div>

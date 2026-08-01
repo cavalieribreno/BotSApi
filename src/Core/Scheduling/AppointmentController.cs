@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BotSaaS.Api.Shared.Results;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,5 +33,28 @@ public class AppointmentController : ControllerBase
             ));
         }
         return Ok(response);
+    }
+
+    [HttpPatch("{id}/status")]
+    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] string status)
+    {
+        string? companyId = User.FindFirstValue("companyId");
+        if (!Guid.TryParse(companyId, out Guid companyGuid))
+        {
+            return Unauthorized(new { error = "Empresa inválida" });
+        }
+
+        // enum name -> AppointmentStatus. IsDefined blocks bogus/out-of-range values (Enum.TryParse accepts any int).
+        if (!Enum.TryParse<AppointmentStatus>(status, ignoreCase: true, out AppointmentStatus parsedStatus) || !Enum.IsDefined(parsedStatus))
+        {
+            return BadRequest(new { error = "Status inválido" });
+        }
+
+        Result<bool> result = await _schedulingService.UpdateAppointmentStatus(companyGuid, id, parsedStatus);
+        if (!result.IsSuccess)
+        {
+            return NotFound(new { error = result.Error });
+        }
+        return NoContent();
     }
 }

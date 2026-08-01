@@ -1,0 +1,72 @@
+* { box-sizing: border-box; }
+
+body {
+  font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+  margin: 0;
+  background: #f4f6f8;
+  color: #1f2430;
+}
+
+/* Login card */
+.card {
+  max-width: 340px;
+  margin: 80px auto;
+  background: #fff;
+  padding: 32px;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+.card h1 { color: #0d3b66; margin: 0; }
+.card .sub { color: #5a6b7b; margin: 4px 0 24px; }
+.card form { display: flex; flex-direction: column; gap: 12px; }
+.card input {
+  padding: 10px 12px;
+  border: 1px solid #cdd7e0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #1e88a8;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+button:hover { background: #176d87; }
+.error { color: #d93025; margin-top: 12px; }
+
+/* Appointments page */
+.page { max-width: 900px; margin: 40px auto; padding: 0 16px; }
+.page header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.page h1 { color: #0d3b66; margin: 0; }
+.page .ghost { background: transparent; color: #1e88a8; }
+.muted { color: #5a6b7b; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #eceff1; }
+th { background: #e4eef4; color: #0d3b66; font-size: 13px; }
+td { font-size: 14px; }
+
+.actions { display: flex; gap: 6px; }
+.actions button { padding: 5px 10px; font-size: 12px; }
+.actions .confirm { background: #43a047; }
+.actions .confirm:hover { background: #388e3c; }
+.actions .complete { background: #1e88a8; }
+.actions .cancel { background: #d93025; }
+.actions .cancel:hover { background: #b7271b; }

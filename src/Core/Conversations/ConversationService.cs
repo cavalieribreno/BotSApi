@@ -1,11 +1,13 @@
 using System.Data.Common;
+using System.Text.Json;
+using BotSaaS.Api.Core.Scheduling;
 using BotSaaS.Api.Shared.AI;
 using BotSaaS.Api.Shared.Database;
 using BotSaaS.Api.Shared.Results;
 
 namespace BotSaaS.Api.Core.Conversations;
 
-// Conversation flow: find-or-create the customer's thread, save their message, load history, ask the AI, save the reply.
+// Conversation flow: find-or-create the customer's thread, save their message, load history, ask the AI, save the reply (or run the tool call).
 public class ConversationService : IConversationService
 {
     private readonly IDatabase _databaseConnection;
@@ -13,13 +15,15 @@ public class ConversationService : IConversationService
     private readonly IConversationRepository _conversationRepository;
     private readonly IMessageRepository _messageRepository;
     private readonly IAiClient _aiClient;
-    public ConversationService(IDatabase databaseConnection, DbSession dbSession, IConversationRepository conversationRepository, IMessageRepository messageRepository, IAiClient aiClient)
+    private readonly ISchedulingService _schedulingService;
+    public ConversationService(IDatabase databaseConnection, DbSession dbSession, IConversationRepository conversationRepository, IMessageRepository messageRepository, IAiClient aiClient, ISchedulingService schedulingService)
     {
         _databaseConnection = databaseConnection;
         _dbSession = dbSession;
         _conversationRepository = conversationRepository;
         _messageRepository = messageRepository;
         _aiClient = aiClient;
+        _schedulingService = schedulingService;
     }
     public async Task<Result<string>> ProcessMessage(Guid companyId, string customerPhone, string messageText)
     {
@@ -81,6 +85,7 @@ public class ConversationService : IConversationService
                 ?? throw new InvalidOperationException("System prompt não definido");
 
             // Tools the model may call. Flat for now; varies per segment/niche later.
+            // TODO: move tool ownership (definition + args + handler) into the Scheduling module. Conversations should just route tool calls, not know appointment-shaped data.
             List<ToolDefinition> tools = new List<ToolDefinition>
             {
                 new ToolDefinition(
@@ -103,27 +108,26 @@ public class ConversationService : IConversationService
             return Result<string>.Failure("Erro ao gerar resposta da IA");
         }
 
-        // text or tool call
+        // 3) resolve the reply (text or tool call) + write it -- one connection scope
         string response;
-        if(aiResponse is TextReply text)
-        {
-            response = text.Text;
-        } 
-        else if(aiResponse is ToolCallReply)
-        {
-           throw new NotImplementedException("tool call não tratado");
-        }
-        else
-        {
-            throw new InvalidOperationException();
-        }
-
-        // 3) write the reply - open, write, close
         try
         {
             using DbConnection connection = _databaseConnection.CreateConnection();
             _dbSession.Connection = connection;
             await connection.OpenAsync();
+
+            if (aiResponse is TextReply text)
+            {
+                response = text.Text;
+            }
+            else if (aiResponse is ToolCallReply toolCall)
+            {
+                response = await HandleToolCall(companyId, conversationId, toolCall);
+            }
+            else
+            {
+                throw new InvalidOperationException();
+            }
 
             Message assistantMessage = new Message
             {
@@ -141,5 +145,24 @@ public class ConversationService : IConversationService
         }
 
         return Result<string>.Success(response);
+    }
+
+    // Runs the tool call: parse args -> create the appointment -> return a confirmation (or a clarification if it failed).
+    private async Task<string> HandleToolCall(Guid companyId, Guid conversationId, ToolCallReply toolCall)
+    {
+        // only tool declared today. Web options = case-insensitive (JSON "servico" -> C# "Servico").
+        AgendamentoArgs? args = JsonSerializer.Deserialize<AgendamentoArgs>(toolCall.ArgumentsJson, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        if (args is null)
+        {
+            return "Desculpe, não consegui entender os dados do agendamento. Pode repetir?";
+        }
+
+        Result<Appointment> result = await _schedulingService.CreateAppointment(companyId, conversationId, args.Servico, args.Nome, args.Data, args.Hora);
+        if (!result.IsSuccess)
+        {
+            return "Não consegui entender a data ou a hora. Pode confirmar, por favor?";
+        }
+
+        return $"Pronto, {args.Nome}! Seu {args.Servico} ficou agendado para {args.Data} às {args.Hora}.";
     }
 }

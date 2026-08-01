@@ -53,7 +53,7 @@
   <div class="meta">
     Plataforma SaaS de bot de IA para WhatsApp<br>
     C# .NET 10 · ASP.NET Core · MySQL · ADO.NET puro<br><br>
-    Atualizado em 27/07/2026 · Auth + IA (Gemini/Groq) + Conversations concluídos e testados e2e
+    Atualizado em 01/08/2026 · Bot transacional funcionando: conversa → Agendamento gravado (function calling), testado e2e
   </div>
 </div>
 
@@ -170,11 +170,15 @@ src/
 │   │   ├── CompaniesEntities.cs (Company, enum Segment)
 │   │   ├── CompaniesService.cs    ICompaniesService.cs
 │   │   ├── CompaniesRepository.cs ICompaniesRepository.cs
-│   ├── Conversations/     (o fluxo do bot — em construção)
+│   ├── Conversations/     (o fluxo do bot: conversa, memória, roteia tool calls)
 │   │   ├── ConversationEntities.cs (Conversation, Message)
-│   │   ├── ConversationService.cs     IConversationService.cs
+│   │   ├── ConversationService.cs     IConversationService.cs   ConversationDTOs.cs
 │   │   ├── ConversationRepository.cs  IConversationRepository.cs
 │   │   ├── MessageRepository.cs       IMessageRepository.cs
+│   ├── Scheduling/        (agendamentos — a ação transacional)
+│   │   ├── SchedulingEntities.cs (Appointment, AppointmentStatus)
+│   │   ├── SchedulingService.cs      ISchedulingService.cs
+│   │   ├── AppointmentRepository.cs  IAppointmentRepository.cs
 │   ├── WhatsApp/  Billing/                          ← futuro (vazias)
 │
 ├── Modules/               ← nichos que estendem o Core
@@ -184,7 +188,7 @@ src/
     ├── Database/   (IDatabase, MySqlDatabase, DbSession, DbCommandExtensions)
     ├── Security/   (IPasswordHasher, BcryptPasswordHasher, IJwtTokenGenerator, JwtTokenGenerator)
     ├── Results/    (Result&lt;T&gt;)
-    └── AI/         (IAiClient, GeminiAiClient, GroqAiClient, ChatMessage/ChatRole, DTOs)
+    └── AI/         (IAiClient, Gemini/GroqAiClient, AiResponse/TextReply/ToolCallReply, ToolDefinition, ChatMessage, DTOs)
 </pre>
 <p class="small">Obs.: namespace é lógico (<code>BotSaaS.Api.Core.Users</code>), ignorando o <code>src/</code>. A pasta é organização; o <strong>namespace</strong> é o que define o módulo de verdade.</p>
 
@@ -195,7 +199,8 @@ src/
   <tr><td><strong>Users</strong></td><td>Dono da entidade User e da gestão (criar, buscar por email; rota <code>/api/me</code>). Futuro: perfil, listar.</td><td>User, UserService, UserRepository, UserController</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Companies</strong></td><td>Os tenants. Dono de "o que é uma Company válida". Futuro: BotConfig, settings.</td><td>Company, CompaniesService, CompaniesRepository</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Conversations</strong></td><td>O fluxo do bot: acha/cria a conversa do cliente, salva mensagens, monta o histórico, chama a IA e salva a resposta. Substitui a memória em RAM por persistência no banco (por cliente). Entrada via <code>ConversationController</code> (<code>POST /api/conversations</code>, protegido).</td><td>Conversation, Message, ConversationService, ConversationController, 2 repositórios</td><td><span class="tag done">e2e</span></td></tr>
-  <tr><td><strong>Shared/AI</strong></td><td>Costura neutra com o LLM. <code>IAiClient</code> esconde o provedor; traduz <code>systemPrompt</code>+histórico pro formato de cada API.</td><td>IAiClient, GeminiAiClient, GroqAiClient, ChatMessage</td><td><span class="tag done">e2e</span></td></tr>
+  <tr><td><strong>Scheduling</strong></td><td>Os agendamentos — a <strong>ação transacional</strong>. Dono de "o que é um <code>Appointment</code> válido" (parseia data+hora, valida). Grava o registro que o dono vai ver.</td><td>Appointment, AppointmentStatus, SchedulingService, AppointmentRepository</td><td><span class="tag done">e2e</span></td></tr>
+  <tr><td><strong>Shared/AI</strong></td><td>Costura neutra com o LLM. <code>IAiClient</code> esconde o provedor; traduz <code>systemPrompt</code>+histórico+<strong>tools</strong>, e devolve <strong>texto ou tool call</strong> (<code>AiResponse</code>).</td><td>IAiClient, Gemini/GroqAiClient, AiResponse, ToolDefinition, ChatMessage</td><td><span class="tag done">e2e</span></td></tr>
 </table>
 <p><strong>Por que Auth e Users são separados?</strong> Autenticação (login/registro/senha) é um concern;
 a entidade User e sua gestão (perfil, listar) é outro. <code>Auth</code> <strong>depende de</strong> <code>Users</code>, mão única.</p>
@@ -206,6 +211,8 @@ a entidade User e sua gestão (perfil, listar) é outro. <code>Auth</code> <stro
   Company 1───N User               ✅ existe (tenant + donos)
   Company 1───N Conversation       ✅ existe (por cliente/telefone)
   Conversation 1───N Message       ✅ existe (Role: User / Assistant)
+  Conversation 1───N Appointment   ✅ existe (ação extraída pela IA)
+  Company 1───N Appointment        ✅ existe (tenant)
   Company 1───N Channel            ⏳ futuro (WhatsApp/Telegram...)
 </pre>
 <div class="note"><strong>Simplificação atual:</strong> a <code>Conversation</code> nasceu enxuta, <em>sem</em> a entidade
@@ -230,11 +237,25 @@ created_at  DATETIME         email         VARCHAR(255) U   created_at     DATET
                                                             role            INT   (reusa ChatRole)
                                                             content         TEXT
                                                             created_at      DATETIME
+
+appointments  (ação transacional que a IA extrai da conversa)
+────────────
+id              CHAR(36) PK
+company_id      CHAR(36) FK → companies
+conversation_id CHAR(36) FK → conversations
+service_name    VARCHAR(150)
+customer_name   VARCHAR(150)
+scheduled_at    DATETIME   (naive / hora local do negócio)
+status          INT        (AppointmentStatus: Pending=0, Confirmed=1, Cancelled=2, Completed=3)
+created_at      DATETIME   (UTC)
 </pre>
 <div class="note"><strong>email UNIQUE global:</strong> um e-mail = uma conta. É essa constraint que gera o erro
 <code>1062</code> (duplicate) no cadastro repetido — e que o teste de atomicidade usou para provar o rollback.</div>
 <div class="note"><strong><code>messages.role</code> é <code>INT</code>, não string:</strong> reusa o mesmo enum <code>ChatRole</code>
 (User=0 / Assistant=1) do módulo de IA. Mesma regra de todo enum no banco — nunca reordenar os números depois que tiver dado.</div>
+<div class="note"><strong><code>appointments</code> — o registro transacional:</strong> é o que a IA extrai da conversa (via function calling) e grava — o "produto".
+<code>scheduled_at</code> é <strong>naive / hora local do negócio</strong> (o "09:00" que o cliente falou); <code>created_at</code> é <strong>UTC</strong>.
+São <strong>frames diferentes</strong> — não comparar os dois direto (por isso ainda sem validação de "data futura"). Multi-fuso real (guardar o fuso da empresa) é futuro.</div>
 
 <h3>Mapeamento C# → MySQL</h3>
 <table>
@@ -310,11 +331,11 @@ Trocar Gemini ↔ Groq é <strong>uma linha</strong> no <code>Program.cs</code> 
 nenhum caller muda. É a prova concreta de que a abstração não é enfeite.</div>
 <p class="small"><strong>LLM é stateless:</strong> o modelo não tem memória. "Memória" = reenviar o system prompt + o histórico
 inteiro a cada chamada. Por isso o histórico precisa viver em algum lugar (o banco) e ter um teto (senão o custo e a latência crescem sem limite).</p>
-<div class="note"><strong>Function calling (em construção):</strong> o contrato evoluiu de <code>Task&lt;string&gt;</code> para <code>Task&lt;AiResponse&gt;</code> para o modelo poder, além de responder texto,
-<strong>pedir uma ação estruturada</strong> (ex: <code>registrar_agendamento</code> com <code>servico/data/hora/nome</code>). As ferramentas vêm do <strong>Core</strong>
-(tipos neutros <code>ToolDefinition</code>/<code>ToolParameter</code>, montados por empresa/nicho no futuro); o client só <strong>formata</strong> pro provedor (Groq: <code>tools</code>/<code>tool_calls</code>).
-Tool = <strong>ação/verbo</strong>; o serviço é um <strong>parâmetro</strong>, não uma tool por item. <strong>Recebimento provado e2e no Groq</strong> (modelo extraiu os 4 args sem alucinar);
-o Gemini ainda <strong>ignora</strong> tools (dormente). Falta o domínio (gravar o <code>Appointment</code>) + o loop multi-turno.</div>
+<div class="ok"><strong>Function calling — o coração transacional (provado e2e):</strong> o contrato evoluiu de <code>Task&lt;string&gt;</code> para <code>Task&lt;AiResponse&gt;</code> para o modelo poder, além de responder texto,
+<strong>pedir uma ação estruturada</strong> (<code>registrar_agendamento</code> com <code>servico/data/hora/nome</code>). As ferramentas vêm do <strong>Core</strong>
+(tipos neutros <code>ToolDefinition</code>/<code>ToolParameter</code>, por empresa/nicho no futuro); o client só <strong>formata</strong> pro provedor (Groq: <code>tools</code>/<code>tool_calls</code>).
+Tool = <strong>ação/verbo</strong>; o serviço é um <strong>parâmetro</strong>, não uma tool por item. <strong>Provado e2e no Groq:</strong> o modelo extraiu os args e o <code>Core/Scheduling</code> gravou o <code>Appointment</code> — conversa vira ação. A confirmação hoje é <strong>templada</strong>;
+o loop multi-turno (modelo frasear) e o tool calling do Gemini ficam pra depois.</div>
 
 <h3>7.6 System prompt dinâmico (por empresa)</h3>
 <p>O prompt final é <strong>por tenant</strong>: cada empresa gera o seu a partir do <code>BotConfig</code>
@@ -385,8 +406,11 @@ histórico <strong>persistido no banco, por cliente</strong>.</p>
      │        └─ null? → cria a Conversation (cliente novo)
      ├─ InsertMessage (msg do cliente, Role=User)
      ├─ GetMessagesByConversation ──► carrega histórico (ORDER BY created_at)
-     ├─ converte List&lt;Message&gt; (entidade) → List&lt;ChatMessage&gt; (DTO do AI)
-     ├─ IAiClient.GenerateReplyAsync(systemPrompt, history) ──► LLM (Gemini/Groq)
+     ├─ converte List&lt;Message&gt; → List&lt;ChatMessage&gt; · monta as tools (registrar_agendamento)
+     ├─ IAiClient.GenerateReplyAsync(systemPrompt, history, tools) ──► LLM (Groq)
+     │        ├─ TextReply     → resposta = texto
+     │        └─ ToolCallReply → parseia args → SchedulingService.CreateAppointment
+     │                            └─► grava Appointment · resposta = confirmação templada
      └─ InsertMessage (resposta, Role=Assistant)
         ▼
   Result&lt;string&gt; (a resposta)  →  devolve ao cliente
@@ -397,6 +421,9 @@ a conversa é sempre buscada dentro do tenant.</div>
 <div class="ok"><strong>Provado em teste e2e (Groq):</strong> register → login (token) → <code>POST /api/conversations</code> duas vezes
 na mesma conversa. O bot lembrou do pedido dito no 1º turno (memória via histórico no banco) e seguiu o system prompt
 (disse que ia "verificar o preço" em vez de inventar). Cadeia completa: token → tenant do JWT → service → LLM → grava → resposta.</div>
+<div class="ok"><strong>Transacional provado e2e (Groq):</strong> "quero agendar um corte de cabelo para 2026-08-05 às 09:00, meu nome é Breno" →
+o modelo chamou <code>registrar_agendamento</code> com os 4 args certos → o <code>SchedulingService</code> gravou o <code>Appointment</code>
+(linha confirmada na tabela <code>appointments</code>) → confirmação templada de volta. <strong>A conversa virou ação estruturada</strong> — o bot deixou de tagarelar e passou a registrar.</div>
 <div class="note"><strong>Entrada atual vs. produção:</strong> hoje a entrada é o <code>ConversationController</code> protegido — o
 <code>companyId</code> sai do <strong>JWT</strong> (correto para uma entrada com token), e o body só traz <code>customerPhone</code> + <code>messageText</code>.
 É marcada como <strong>dev/token</strong> porque a entrada de produção é o <strong>webhook do WhatsApp</strong>, onde <strong>não há token</strong>:
@@ -431,9 +458,9 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
   FASE 1  Auth / Users / Companies ........ ████████  registro ✅ login ✅ /api/me ✅
   FASE 2  Shared/AI (Gemini + Groq) ........ ████████  dois provedores e2e ✅
           Core/Conversations ............... ████████  fluxo e2e ✅ · conexão fora do LLM ✅
-          Function calling (recebimento) ... ███████░  tool call provado e2e ✅ · domínio pendente
+          Function calling + Scheduling .... ████████  conversa → Appointment gravado, e2e ✅
           Core/WhatsApp (webhook) .......... ░░░░░░░░  ◄── conecta o bot ao mundo real
-  FASE 3  Modules/Barber (1º nicho) ........ ░░░░░░░░  ◄── gravar o Agendamento (domínio)
+  FASE 3  Modules/Barber (1º nicho) ........ ░░░░░░░░  ◄── nichos + painel do dono
   FASE 4  Billing (cobrança) ............... ░░░░░░░░
 </pre>
 <h3>Feito</h3>
@@ -451,22 +478,23 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 <span class="tag done">Histórico no banco por cliente</span>
 <span class="tag done">Conexão fora do LLM</span>
 <span class="tag done">Validação de entrada (DataAnnotations)</span>
-<span class="tag done">Function calling: recebimento e2e</span>
+<span class="tag done">Function calling + Scheduling e2e</span>
+<span class="tag done">Agendamento transacional (conversa → banco)</span>
 <span class="tag done">git + README + .gitignore</span>
 </p>
 <h3>Em construção / a endurecer</h3>
 <p>
-<span class="tag wip">Function calling: domínio (Appointment) + wiring</span>
+<span class="tag wip">Loop multi-turno (confirmação frasada pelo modelo)</span>
 <span class="tag wip">Teto de histórico</span>
 <span class="tag wip">Expiração por inatividade</span>
+<span class="tag wip">Gemini tool calling</span>
 </p>
 
 <h2>14. Pontos de atenção &amp; próximos passos</h2>
 <h3>Pontos de atenção conhecidos (Conversations)</h3>
 <ul>
-  <li><strong>Conexão presa durante o LLM.</strong> <code>ProcessMessage</code> mantém a conexão do banco aberta
-      ao redor da chamada HTTP ao modelo (segundos). O certo é a conexão viver em dois trechos curtos
-      (escrita antes / escrita depois), com o LLM <strong>fora</strong> — senão o pool esgota sob carga.</li>
+  <li><strong>Conexão presa durante o LLM — ✅ resolvido.</strong> O <code>ProcessMessage</code> abre a conexão em
+      <strong>dois trechos curtos</strong> (escrita antes / escrita depois), com o LLM <strong>fora</strong> de qualquer conexão aberta — o pool não fica preso sob carga.</li>
   <li><strong><code>"Erro"</code> persistido — ✅ resolvido.</strong> Agora <code>GenerateReplyAsync</code> <strong>estoura</strong>
       <code>AiClientException</code> em status ruim/null (não devolve string de erro). O <code>ConversationService</code>
       captura (<code>catch(AiClientException)</code>) e devolve <code>Result.Failure</code> — nenhuma resposta falsa é gravada.
@@ -478,16 +506,17 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 </ul>
 <h3>Próximos passos</h3>
 <ol>
-  <li><strong>Endurecer o fluxo de Conversa</strong> — resolver os pontos acima (conexão fora do LLM, tratar falha do LLM, teto de histórico).</li>
+  <li><strong>Extração de ação (function calling) — ✅ feito e testado e2e.</strong> A IA chama <code>registrar_agendamento</code> e o <code>Core/Scheduling</code> grava o <code>Appointment</code>. Restante: loop multi-turno (modelo frasear a confirmação) e tool calling do Gemini.</li>
+  <li><strong>Endurecer o fluxo de Conversa</strong> — teto de histórico e expiração por inatividade (conexão-fora-do-LLM e tratamento de falha da IA já feitos).</li>
   <li><strong>Pacote de erro</strong> — <code>Result.Error</code> virar código semântico; "email já existe" → HTTP <strong>409</strong> (<code>DbException.SqlState=="23000"</code> ou <code>MySqlException.Number==1062</code>).</li>
   <li><strong>Canal de WhatsApp</strong> — webhook + entidade <code>Channel</code>; <code>companyId</code> a partir do canal (não do body). Idempotência por message-id (WhatsApp reentrega).</li>
-  <li><strong>Extração de ação (function calling)</strong> — a IA decide quando/qual ação e grava <code>Pedido</code>/<code>Agendamento</code> (no <code>Modules/{nicho}</code>). O ponto onde o bot deixa de "conversar" e passa a "registrar".</li>
+  <li><strong>Painel do dono</strong> — ler os <code>Appointment</code> do banco (a "visão do dono") — primeira parte visível do produto.</li>
 </ol>
 <h3>TODOs no código</h3>
 <ul>
   <li><code>AuthService</code> ainda devolve <code>Result.Failure("Erro ao registrar")</code> (string) → código semântico.</li>
   <li>Leitura das envs JWT repetida (gerador + validador) → centralizar em options.</li>
-  <li>Registro/Login sem validação de entrada (email/senha vazios, formato) — sobem direto pro banco.</li>
+  <li><strong>Posse do tool <code>registrar_agendamento</code></strong> está na Conversations (declaração + args + handler); mover pra <code>Scheduling</code> e deixar a Conversations como roteador de tool calls — TODO no código, fazer no 2º nicho.</li>
   <li><code>MessageRepository.GetMessagesByConversation</code> passa o <code>@conversationId</code> como <code>Guid</code> cru, enquanto os outros repos passam <code>.ToString()</code> — inconsistência (funciona, mas depende do formato de Guid do driver).</li>
 </ul>
 
@@ -511,7 +540,7 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 </table>
 
 <p class="small" style="margin-top:40px; text-align:center; color:#9aa7b3;">
-BotSaaS — Documento de Arquitetura · gerado a partir do PROJETO.md e do código-fonte · Auth + IA + Conversations concluídos e testados e2e
+BotSaaS — Documento de Arquitetura · gerado a partir do PROJETO.md e do código-fonte · Auth + IA + Conversations + function calling (agendamento transacional) concluídos e testados e2e
 </p>
 
 </body>

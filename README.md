@@ -47,7 +47,7 @@ Decisões de design que guiam o código:
 - ✅ Rota protegida lendo a identidade/tenant das claims do token
 - ✅ Integração com IA respondendo via API — dois provedores trocáveis por DI (Gemini e Groq/Llama)
 - ✅ Conversas com histórico persistido no banco (memória por cliente) — testado e2e
-- 🔨 Extração de ação via **function calling** (tool calling) — o modelo extrai um `Agendamento` estruturado da conversa; recebimento provado e2e, domínio em construção
+- ✅ Extração de ação via **function calling** — o modelo extrai um `Agendamento` estruturado da conversa e **grava no banco** (testado e2e)
 - 🔜 Canal de WhatsApp, painel do dono, cobrança
 
 ## Endpoints
@@ -67,7 +67,7 @@ Decisões de design que guiam o código:
 2. Preencha o `.env` com suas variáveis: banco (`DB_HOST/USER/PASSWORD/NAME/PORT`),
    JWT (`JWT_SECRET/ISSUER/AUDIENCE/EXPIRES_HOURS`), IA (`GEMINI_API_KEY/MODEL` e/ou
    `GROQ_API_KEY/MODEL`) e `SYSTEM_PROMPT`. O provedor ativo é escolhido na DI (`Program.cs`).
-3. Crie o banco e as tabelas `companies`, `users`, `conversations` e `messages` no MySQL.
+3. Crie o banco e as tabelas `companies`, `users`, `conversations`, `messages` e `appointments` no MySQL.
 4. Rode:
    ```bash
    dotnet run
@@ -83,7 +83,8 @@ src/
 │   ├── Auth/          registro e login (orquestra o cadastro)
 │   ├── Users/         entidade User + gestão
 │   ├── Companies/     os tenants (empresas clientes)
-│   └── Conversations/ conversa + mensagens (Conversation/Message + repositórios)
+│   ├── Conversations/ conversa + mensagens (Conversation/Message + repositórios)
+│   └── Scheduling/    agendamentos (Appointment + service + repositório)
 └── Shared/
     ├── Results/     Result Pattern
     ├── Security/    hash de senha + JWT

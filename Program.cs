@@ -2,6 +2,7 @@ using System.Text;
 using BotSaaS.Api.Core.Auth;
 using BotSaaS.Api.Core.Companies;
 using BotSaaS.Api.Core.Conversations;
+using BotSaaS.Api.Core.Scheduling;
 using BotSaaS.Api.Core.Users;
 using BotSaaS.Api.Shared.AI;
 using BotSaaS.Api.Shared.Database;
@@ -28,6 +29,8 @@ builder.Services.AddScoped<ICompaniesService, CompaniesService>();
 builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
+builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+builder.Services.AddScoped<ISchedulingService, SchedulingService>();
 
 // JWT auth: validates token signature/issuer/audience/expiry on protected routes.
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

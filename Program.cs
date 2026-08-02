@@ -1,4 +1,5 @@
 using System.Text;
+using BotSaaS.Api.Channels.Telegram;
 using BotSaaS.Api.Core.Auth;
 using BotSaaS.Api.Core.Companies;
 using BotSaaS.Api.Core.Conversations;
@@ -31,6 +32,9 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 builder.Services.AddScoped<ISchedulingService, SchedulingService>();
+
+// Telegram test channel: background loop that polls Telegram and routes messages through ConversationService.
+builder.Services.AddHostedService<TelegramPollingService>();
 
 // CORS: allow the Angular dev app (localhost:4200) to call the API.
 builder.Services.AddCors(options =>

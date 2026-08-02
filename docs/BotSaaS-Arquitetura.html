@@ -52,8 +52,8 @@
   <div class="sub">Documento de Arquitetura &amp; Design</div>
   <div class="meta">
     Plataforma SaaS de bot de IA para WhatsApp<br>
-    C# .NET 10 · ASP.NET Core · MySQL · ADO.NET puro<br><br>
-    Atualizado em 01/08/2026 · Full-stack: conversa → Agendamento gravado (function calling) → painel do dono em Angular (visão + gestão), testado e2e
+    C# .NET 10 · ASP.NET Core · MySQL · ADO.NET puro · Angular 21<br><br>
+    Atualizado em 02/08/2026 · Full-stack: cliente conversa por chat (Telegram) → Agendamento gravado (function calling) → painel do dono em Angular (visão + gestão), testado e2e
   </div>
 </div>
 
@@ -94,8 +94,8 @@ o valor está em <strong>virar ação estruturada</strong>: o cliente final faz 
 
 <table>
   <tr><th>Ator</th><th>Como usa</th><th>O que faz</th></tr>
-  <tr><td>Dono da loja</td><td>Painel web (futuro)</td><td>Cadastra-se, configura o bot, vê pedidos/agendamentos, paga a mensalidade</td></tr>
-  <tr><td>Cliente final</td><td>WhatsApp</td><td>Manda mensagem para o número da loja; a IA atende e registra a ação (pedido/horário)</td></tr>
+  <tr><td>Dono da loja</td><td>Painel web (Angular)</td><td>Cadastra-se, vê e gerencia os agendamentos (confirmar/concluir/cancelar), lê a conversa que gerou cada um. Futuro: configurar o bot, pagar a mensalidade</td></tr>
+  <tr><td>Cliente final</td><td>WhatsApp / Telegram</td><td>Manda mensagem para o bot da loja; a IA atende e registra a ação (pedido/horário)</td></tr>
   <tr><td>Você (SaaS)</td><td>Infra</td><td>Hospeda o banco e a aplicação; responsável pelos dados (LGPD)</td></tr>
 </table>
 <p class="small"><strong>Contexto:</strong> projeto construído como peça de <strong>portfólio</strong> (demonstrar
@@ -112,23 +112,26 @@ fechado como entregável principal.</p>
   <tr><td>Auth</td><td>JWT próprio + BCrypt</td><td>Poucos usuários (donos), não precisa Auth0/Identity</td></tr>
   <tr><td><strong>IA</strong></td><td><strong>Google Gemini</strong> ou <strong>Groq/Llama</strong> (atrás de <code>IAiClient</code>)</td><td>O cérebro do bot — provedor trocável por DI (1 linha). Abstração já provada na prática</td></tr>
   <tr><td><strong>Frontend</strong></td><td><strong>Angular 21</strong> (standalone, signals, zoneless)</td><td>O painel do dono. DI/decorators/services ecoam o backend C#; consome a API REST</td></tr>
-  <tr><td>WhatsApp</td><td>Evolution API ou Z-API (futuro)</td><td>Transporte abstraído, troca barata</td></tr>
+  <tr><td><strong>Canais</strong></td><td><strong>Telegram</strong> (long polling, funcionando) · WhatsApp (webhook, futuro)</td><td>Adaptadores de entrada que roteiam a mensagem pro mesmo fluxo de conversa. Telegram é o canal de teste; WhatsApp é o alvo de produção</td></tr>
   <tr><td>Config</td><td>.env (DotNetEnv)</td><td>Segredos fora do código</td></tr>
 </table>
 
 <h2>3. Arquitetura em camadas</h2>
 <p>Monolito <strong>modular</strong> (não microserviços). Três camadas com dependência de <strong>mão única</strong>:</p>
 <pre class="diagram">
-            ┌─ HTTP ─ Controllers ([ApiController]) ─┐
-            ▼
+   Controllers ([ApiController])       Channels/ (Telegram · WhatsApp)
+   painel + API (JWT)                   entrada por mensagem (sem token)
+            │                                   │
+            └─────────────────┬─────────────────┘
+                              ▼
   ┌───────────────────────────────────────────────────────┐
   │  Core/  — o KERNEL (a essência do produto)             │
   │                                                         │
   │    Auth ───► Users ───► Companies        (Fase 1 ✅)    │
   │   (login)   (usuário)   (tenant)                        │
   │                                                         │
-  │    Conversations  (histórico + IA)      (em construção)│
-  │    WhatsApp · Billing                        (futuro)  │
+  │    Conversations (histórico + IA) · Scheduling   ✅    │
+  │    Billing                                   (futuro)  │
   └───────────────────────────┬───────────────────────────┘
                               │ usa (nunca o contrário)
                               ▼
@@ -140,7 +143,7 @@ fechado como entregável principal.</p>
                            MySQL
                         + LLM (HTTP)
 
-  Modules/ (nichos: Barber, etc.) dependem do Core e o estendem.
+  Channels/ e Modules/ dependem do Core (mão única); Modules estendem por nicho.
 </pre>
 <div class="note"><strong>Regra de ouro:</strong> <code>Core</code> depende de <code>Shared</code>, <strong>nunca</strong> o contrário.
 "Usado por todos" não significa "núcleo" — Shared é o <em>chão</em>, Core é o <em>centro</em>.</div>
@@ -158,6 +161,8 @@ Quem tem regra (montar prompt, salvar histórico, decidir a ação) é o <strong
 <h2>4. Estrutura de pastas</h2>
 <pre>
 src/
+├── Channels/              ← adaptadores de entrada (chamam o Core)
+│   └── Telegram/          (TelegramPollingService : BackgroundService, long polling · DTOs)
 ├── Core/                  ← KERNEL
 │   ├── Auth/              (autenticação: registro/login — orquestra o cadastro)
 │   │   ├── AuthService.cs        IAuthService.cs
@@ -179,7 +184,7 @@ src/
 │   │   ├── SchedulingEntities.cs (Appointment, AppointmentStatus)
 │   │   ├── SchedulingService.cs      ISchedulingService.cs
 │   │   ├── AppointmentRepository.cs  IAppointmentRepository.cs
-│   ├── WhatsApp/  Billing/                          ← futuro (vazias)
+│   ├── WhatsApp/  Billing/                          ← futuro
 │
 ├── Modules/               ← nichos que estendem o Core
 │   └── Barber/            ← Fase 3
@@ -200,6 +205,7 @@ src/
   <tr><td><strong>Companies</strong></td><td>Os tenants. Dono de "o que é uma Company válida". Futuro: BotConfig, settings.</td><td>Company, CompaniesService, CompaniesRepository</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Conversations</strong></td><td>O fluxo do bot: acha/cria a conversa do cliente, salva mensagens, monta o histórico, chama a IA e salva a resposta. Substitui a memória em RAM por persistência no banco (por cliente). Entrada via <code>ConversationController</code> (<code>POST /api/conversations</code>, protegido).</td><td>Conversation, Message, ConversationService, ConversationController, 2 repositórios</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Scheduling</strong></td><td>Os agendamentos — a <strong>ação transacional</strong>. Dono de "o que é um <code>Appointment</code> válido" (parseia data+hora, valida), da <strong>visão do dono</strong> (<code>GET /api/appointments</code>) e da <strong>gestão de status</strong> (<code>PATCH .../{id}/status</code>, tenant-scoped via <code>WHERE company_id</code>).</td><td>Appointment, AppointmentStatus, SchedulingService, AppointmentRepository, AppointmentController</td><td><span class="tag done">e2e</span></td></tr>
+  <tr><td><strong>Channels/Telegram</strong></td><td>Canal de entrada (teste). Um <code>BackgroundService</code> faz <em>long polling</em> no Telegram e roteia cada mensagem pelo mesmo <code>ConversationService</code>. O tenant é resolvido por config (<code>.env</code>); em produção, webhook + tabela <code>Channel</code>.</td><td>TelegramPollingService, TelegramDtos</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Shared/AI</strong></td><td>Costura neutra com o LLM. <code>IAiClient</code> esconde o provedor; traduz <code>systemPrompt</code>+histórico+<strong>tools</strong>, e devolve <strong>texto ou tool call</strong> (<code>AiResponse</code>).</td><td>IAiClient, Gemini/GroqAiClient, AiResponse, ToolDefinition, ChatMessage</td><td><span class="tag done">e2e</span></td></tr>
 </table>
 <p><strong>Por que Auth e Users são separados?</strong> Autenticação (login/registro/senha) é um concern;
@@ -213,7 +219,7 @@ a entidade User e sua gestão (perfil, listar) é outro. <code>Auth</code> <stro
   Conversation 1───N Message       ✅ existe (Role: User / Assistant)
   Conversation 1───N Appointment   ✅ existe (ação extraída pela IA)
   Company 1───N Appointment        ✅ existe (tenant)
-  Company 1───N Channel            ⏳ futuro (WhatsApp/Telegram...)
+  Company 1───N Channel            ⏳ futuro (Telegram já funciona via config; a tabela vem no onboarding)
 </pre>
 <div class="note"><strong>Simplificação atual:</strong> a <code>Conversation</code> nasceu enxuta, <em>sem</em> a entidade
 <code>Channel</code> ainda. O telefone do cliente (<code>customer_phone</code>) vai direto na conversa; o par
@@ -236,7 +242,7 @@ created_at  DATETIME         email         VARCHAR(255) U   created_at     DATET
                                                             conversation_id CHAR(36) FK → conversations
                                                             role            INT   (reusa ChatRole)
                                                             content         TEXT
-                                                            created_at      DATETIME
+                                                            created_at      DATETIME(6)  ◄ microssegundo
 
 appointments  (ação transacional que a IA extrai da conversa)
 ────────────
@@ -253,6 +259,10 @@ created_at      DATETIME   (UTC)
 <code>1062</code> (duplicate) no cadastro repetido — e que o teste de atomicidade usou para provar o rollback.</div>
 <div class="note"><strong><code>messages.role</code> é <code>INT</code>, não string:</strong> reusa o mesmo enum <code>ChatRole</code>
 (User=0 / Assistant=1) do módulo de IA. Mesma regra de todo enum no banco — nunca reordenar os números depois que tiver dado.</div>
+<div class="note"><strong><code>messages.created_at</code> é <code>DATETIME(6)</code> (microssegundo):</strong> numa conversa rápida (ex: Telegram),
+a mensagem do cliente e a resposta do bot caem no mesmo segundo; com resolução de 1s elas empatavam e o <code>ORDER BY created_at</code>
+desempatava na sorte (PK Guid aleatório), bagunçando a ordem no painel. A precisão de sub-segundo — que o app já insere via
+<code>DateTime.UtcNow</code> — resolve.</div>
 <div class="note"><strong><code>appointments</code> — o registro transacional:</strong> é o que a IA extrai da conversa (via function calling) e grava — o "produto".
 <code>scheduled_at</code> é <strong>naive / hora local do negócio</strong> (o "09:00" que o cliente falou); <code>created_at</code> é <strong>UTC</strong>.
 São <strong>frames diferentes</strong> — não comparar os dois direto (por isso ainda sem validação de "data futura"). Multi-fuso real (guardar o fuso da empresa) é futuro.</div>
@@ -384,9 +394,10 @@ no banco (nenhuma Company órfã). A atomicidade funciona.</div>
      │       └─ null? → Result.Failure("Credenciais inválidas")
      ├─ IPasswordHasher.Verify(senha, hash)
      │       └─ inválida? → Result.Failure("Credenciais inválidas")  ← MESMA msg (não revela qual)
-     └─ IJwtTokenGenerator.GenerateToken(userId, companyId, email)
+     ├─ IJwtTokenGenerator.GenerateToken(userId, companyId, email)
+     └─ CompaniesService.GetCompanyById(companyId) ── nome da empresa (white-label)
         ▼
-  Result&lt;string&gt; (o token)  →  200 { token }   |   falha → 401 Unauthorized
+  Result&lt;LoginResult&gt; (token + companyName)  →  200 { token, companyName }   |   falha → 401
 </pre>
 <div class="ok"><strong>Provado em teste e2e:</strong> senha certa → 200 + JWT; senha errada e email inexistente → 401.
 Rota protegida <code>GET /api/me</code> lê <code>sub</code>/<code>companyId</code>/<code>email</code> das claims;
@@ -396,9 +407,10 @@ token adulterado → 401 (a assinatura HMAC barra a forja).</div>
 <p>O coração transacional do produto. Substitui a antiga memória em RAM (uma lista global, deletada) por
 histórico <strong>persistido no banco, por cliente</strong>.</p>
 <pre class="diagram">
-  (hoje) POST /api/conversations   { customerPhone, messageText }   [Authorize]
-         └─ companyId vem do JWT (claim), NÃO do body ── entrada dev/token
-  (alvo) Webhook do WhatsApp ─► sem token; companyId vem do CANAL
+  (dev)      POST /api/conversations  { customerPhone, messageText }  [Authorize]
+             └─ companyId vem do JWT (claim), NÃO do body
+  (canal)    Telegram (long polling)  ─► chatId vira o "customer_phone"; companyId por config (.env)
+  (produção) Webhook do WhatsApp       ─► sem token; companyId vem do CANAL (tabela Channel)
         │
         ▼
   ConversationService.ProcessMessage
@@ -459,8 +471,10 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
   FASE 2  Shared/AI (Gemini + Groq) ........ ████████  dois provedores e2e ✅
           Core/Conversations ............... ████████  fluxo e2e ✅ · conexão fora do LLM ✅
           Function calling + Scheduling .... ████████  conversa → Appointment gravado, e2e ✅
-          Core/WhatsApp (webhook) .......... ░░░░░░░░  ◄── conecta o bot ao mundo real
-  FASE 3  Modules/Barber (1º nicho) ........ ░░░░░░░░  ◄── nichos + painel do dono
+          Painel do dono (Angular) ......... ████████  login + tabela + gestão + white-label, e2e ✅
+          Canal Telegram (long polling) .... ████████  conversa real → agendamento no painel, e2e ✅
+          Canal WhatsApp (webhook) ......... ░░░░░░░░  ◄── entrada de produção (troca o polling)
+  FASE 3  Modules/Barber (1º nicho) ........ ░░░░░░░░  ◄── regras por nicho (disponibilidade)
   FASE 4  Billing (cobrança) ............... ░░░░░░░░
 </pre>
 <h3>Feito</h3>
@@ -486,6 +500,10 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 <span class="tag done">Link agendamento → conversa (chat) e2e</span>
 <span class="tag done">Data no prompt + tool tunada (data/hora natural)</span>
 <span class="tag done">git + README + .gitignore</span>
+<span class="tag done">Canal Telegram (long polling) e2e</span>
+<span class="tag done">Painel repaginado (shell/sidebar)</span>
+<span class="tag done">White-label (marca do tenant no login)</span>
+<span class="tag done">Ordenação de mensagens (DATETIME(6))</span>
 </p>
 <h3>Em construção / a endurecer</h3>
 <p>
@@ -493,6 +511,8 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 <span class="tag wip">Teto de histórico</span>
 <span class="tag wip">Expiração por inatividade</span>
 <span class="tag wip">Gemini tool calling</span>
+<span class="tag wip">Webhook (troca o polling do Telegram)</span>
+<span class="tag wip">Slot-filling (garantir dados antes do tool)</span>
 </p>
 
 <h2>14. Pontos de atenção &amp; próximos passos</h2>
@@ -523,6 +543,8 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
   <li>Leitura das envs JWT repetida (gerador + validador) → centralizar em options.</li>
   <li><strong>Posse do tool <code>registrar_agendamento</code></strong> está na Conversations (declaração + args + handler); mover pra <code>Scheduling</code> e deixar a Conversations como roteador de tool calls — TODO no código, fazer no 2º nicho.</li>
   <li><code>MessageRepository.GetMessagesByConversation</code> passa o <code>@conversationId</code> como <code>Guid</code> cru, enquanto os outros repos passam <code>.ToString()</code> — inconsistência (funciona, mas depende do formato de Guid do driver).</li>
+  <li><strong>Canal Telegram por polling é temporário</strong> — trocar por <strong>webhook</strong> em produção (é o que o WhatsApp Cloud API exige; são mutuamente exclusivos). O reaproveitável entre os dois é o <code>ProcessMessage</code>.</li>
+  <li><strong>Resolução de tenant no canal via <code>.env</code></strong> (<code>TELEGRAM_TEST_COMPANY_ID</code>) é provisória. Multi-tenant real = tabela <code>Channel</code> (<code>type</code>, <code>external_id</code>, <code>token</code> → <code>company_id</code>), populada no onboarding.</li>
 </ul>
 
 <h2>15. Glossário</h2>
@@ -545,7 +567,7 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 </table>
 
 <p class="small" style="margin-top:40px; text-align:center; color:#9aa7b3;">
-BotSaaS — Documento de Arquitetura · gerado a partir do PROJETO.md e do código-fonte · Auth + IA + Conversations + function calling (agendamento transacional) concluídos e testados e2e
+BotSaaS — Documento de Arquitetura · gerado a partir do PROJETO.md e do código-fonte · Auth + IA + Conversations + function calling (agendamento transacional) + painel do dono (Angular) + canal Telegram — concluídos e testados e2e
 </p>
 
 </body>

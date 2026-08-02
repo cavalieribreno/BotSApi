@@ -44,3 +44,6 @@ public class LoginRequest
     [Required]
     public string Password { get; set; } = string.Empty;
 }
+
+// login result: the JWT + the tenant's name (shown as the brand in the panel)
+public record LoginResult(string Token, string CompanyName);

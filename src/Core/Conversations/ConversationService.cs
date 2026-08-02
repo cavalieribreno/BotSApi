@@ -98,13 +98,13 @@ public class ConversationService : IConversationService
             {
                 new ToolDefinition(
                     "registrar_agendamento",
-                    "Registra um agendamento. Só chame quando tiver serviço, nome, a DATA e o HORÁRIO EXATO. Se o cliente der algo vago como 'de manhã' ou 'à tarde', pergunte o horário específico ANTES de chamar.",
+                    "Registra um agendamento. Só chame quando JÁ TIVER os quatro dados: serviço, nome do cliente, a DATA e o HORÁRIO EXATO. Se faltar qualquer um — inclusive o NOME — pergunte ao cliente ANTES de chamar. NUNCA invente dados nem use genéricos: nada de 'cliente' no nome nem 'de manhã' na hora.",
                     new List<ToolParameter>
                     {
                         new ToolParameter("servico", "string", "O serviço desejado, ex: corte de cabelo", true),
                         new ToolParameter("data", "string", "A data no formato AAAA-MM-DD", true),
                         new ToolParameter("hora", "string", "O horário EXATO no formato HH:MM 24h, ex: 09:00. Nunca use termos vagos como 'de manhã'.", true),
-                        new ToolParameter("nome", "string", "O nome do cliente", true)
+                        new ToolParameter("nome", "string", "O nome do cliente, dito por ele. Nunca invente nem use genéricos como 'cliente'; se ele não informou, pergunte antes.", true)
                     }
                 )
             };

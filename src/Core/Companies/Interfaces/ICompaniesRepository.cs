@@ -4,4 +4,5 @@ namespace BotSaaS.Api.Core.Companies;
 public interface ICompaniesRepository
 {
     Task InsertCompany(Company company);
+    Task<Company?> GetCompanyById(Guid id);
 }

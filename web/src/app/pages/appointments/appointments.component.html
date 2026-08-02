@@ -1,42 +1,68 @@
-<div class="page">
-  <header>
+<main class="content">
+  <div class="page-head">
     <h1>Agendamentos</h1>
-    <button class="ghost" (click)="logout()">Sair</button>
-  </header>
+  </div>
+
+  @if (error()) {
+    <div class="alert">{{ error() }}</div>
+  }
 
   @if (loading()) {
-    <p class="muted">Carregando...</p>
+    <p class="empty">Carregando...</p>
   } @else if (appointments().length === 0) {
-    <p class="muted">Nenhum agendamento ainda.</p>
+    <p class="empty">Nenhum agendamento ainda.</p>
   } @else {
-    <table>
-      <thead>
-        <tr>
-          <th>Serviço</th>
-          <th>Cliente</th>
-          <th>Quando</th>
-          <th>Status</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (a of appointments(); track a.id) {
+    <div class="stats">
+      <div class="stat">
+        <div class="num">{{ appointments().length }}</div>
+        <div class="lbl">Total</div>
+      </div>
+      <div class="stat">
+        <div class="num">{{ count('Pending') }}</div>
+        <div class="lbl">Pendentes</div>
+      </div>
+      <div class="stat">
+        <div class="num">{{ count('Confirmed') }}</div>
+        <div class="lbl">Confirmados</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
           <tr>
-            <td>{{ a.serviceName }}</td>
-            <td>{{ a.customerName }}</td>
-            <td>{{ a.scheduledAt | date:'dd/MM/yyyy HH:mm' }}</td>
-            <td>{{ statusLabel(a.status) }}</td>
-            <td>
-              <div class="actions">
-                <button class="confirm" (click)="changeStatus(a.id, 'Confirmed')">Confirmar</button>
-                <button class="complete" (click)="changeStatus(a.id, 'Completed')">Concluir</button>
-                <button class="cancel" (click)="changeStatus(a.id, 'Cancelled')">Cancelar</button>
-                <a [routerLink]="['/conversations', a.conversationId]" class="chat-link">Ver conversa</a>
-              </div>
-            </td>
+            <th>Serviço</th>
+            <th>Cliente</th>
+            <th>Quando</th>
+            <th>Status</th>
+            <th>Ações</th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (a of appointments(); track a.id) {
+            <tr>
+              <td class="cell-strong">{{ a.serviceName }}</td>
+              <td>{{ a.customerName }}</td>
+              <td class="cell-muted">{{ a.scheduledAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td><span class="badge" [attr.data-status]="a.status">{{ statusLabel(a.status) }}</span></td>
+              <td>
+                <div class="actions-cell">
+                  @if (a.status === 'Pending') {
+                    <button class="btn btn-sm btn-success" (click)="changeStatus(a.id, 'Confirmed')">Confirmar</button>
+                  }
+                  @if (a.status === 'Confirmed') {
+                    <button class="btn btn-sm btn-outline" (click)="changeStatus(a.id, 'Completed')">Concluir</button>
+                  }
+                  @if (a.status === 'Pending' || a.status === 'Confirmed') {
+                    <button class="btn btn-sm btn-danger" (click)="cancel(a.id)">Cancelar</button>
+                  }
+                  <a [routerLink]="['/conversations', a.conversationId]" class="link">Ver conversa</a>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
-</div>
+</main>

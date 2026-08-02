@@ -22,4 +22,10 @@ public class CompaniesService : ICompaniesService
         await _companieRepository.InsertCompany(company);
         return company;
     }
-} 
+
+    // Company lookup by id (used at login to show the tenant's name). null = not found.
+    public async Task<Company?> GetCompanyById(Guid id)
+    {
+        return await _companieRepository.GetCompanyById(id);
+    }
+}

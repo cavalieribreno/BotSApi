@@ -35,9 +35,10 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request)
     {
-        Result<string> result = await _authService.Login(request);
+        Result<LoginResult> result = await _authService.Login(request);
         if(!result.IsSuccess) return Unauthorized( new { error = result.Error });
 
-        return Ok(new { token = result.Value });
+        LoginResult login = result.Value!;
+        return Ok(new { token = login.Token, companyName = login.CompanyName });
     }
 }

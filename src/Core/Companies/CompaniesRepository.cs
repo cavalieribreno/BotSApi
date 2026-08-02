@@ -24,4 +24,24 @@ public class CompaniesRepository : ICompaniesRepository
 
         await command.ExecuteNonQueryAsync();
     }
+
+    public async Task<Company?> GetCompanyById(Guid id)
+    {
+        using DbCommand command = _dbSession.Connection.CreateCommand();
+        command.Transaction = _dbSession.Transaction;
+        command.CommandText = "SELECT id, name, segment, created_at FROM companies WHERE id = @id";
+        command.AddParameter("@id", id.ToString()); //guid
+
+        using DbDataReader reader = await command.ExecuteReaderAsync();
+
+        if(!await reader.ReadAsync()) return null;
+
+        return new Company
+        {
+            Id = (Guid)reader["id"],
+            Name = (string)reader["name"],
+            Segment = (Segment)(int)reader["segment"],
+            CreatedAt = (DateTime)reader["created_at"]
+        };
+    }
 }

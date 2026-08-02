@@ -1,27 +1,29 @@
-<div class="page">
-  <header>
+<main class="content">
+  <div class="page-head">
     <div>
       <h1>Conversa</h1>
       @if (customerPhone()) {
         <p class="muted">Cliente: {{ customerPhone() }}</p>
       }
     </div>
-    <a routerLink="/appointments" class="ghost-link">← Agendamentos</a>
-  </header>
+    <a routerLink="/appointments" class="back-link">← Agendamentos</a>
+  </div>
 
   @if (loading()) {
-    <p class="muted">Carregando...</p>
+    <p class="empty">Carregando...</p>
   } @else if (messages().length === 0) {
-    <p class="muted">Sem mensagens.</p>
+    <p class="empty">Sem mensagens.</p>
   } @else {
-    <div class="chat">
-      @for (m of messages(); track $index) {
-        <div class="msg" [class.mine]="m.role === 'Assistant'" [class.theirs]="m.role === 'User'">
-          <div class="sender">{{ m.role === 'Assistant' ? 'Bot' : 'Cliente' }}</div>
-          <div class="bubble">{{ m.content }}</div>
-          <div class="time">{{ m.createdAt | date:'dd/MM HH:mm' }}</div>
-        </div>
-      }
+    <div class="card">
+      <div class="chat">
+        @for (m of messages(); track $index) {
+          <div class="msg" [class.mine]="m.role === 'Assistant'" [class.theirs]="m.role === 'User'">
+            <div class="sender">{{ m.role === 'Assistant' ? 'Bot' : 'Cliente' }}</div>
+            <div class="bubble">{{ m.content }}</div>
+            <div class="time">{{ m.createdAt | date:'dd/MM HH:mm' }}</div>
+          </div>
+        }
+      </div>
     </div>
   }
-</div>
+</main>

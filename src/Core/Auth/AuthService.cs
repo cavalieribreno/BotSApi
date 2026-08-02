@@ -56,7 +56,7 @@ public class AuthService : IAuthService
         }
     }
     // Login: find user by email, verify password, return a JWT. Read-only, no transaction.
-    public async Task<Result<string>> Login(LoginRequest request)
+    public async Task<Result<LoginResult>> Login(LoginRequest request)
     {
         using DbConnection connection = _databaseConnection.CreateConnection();
         _dbSession.Connection = connection;
@@ -65,12 +65,15 @@ public class AuthService : IAuthService
         // same message for missing email AND wrong password -- don't reveal which (security)
         User? user = await _userService.GetUserByEmail(request.Email);
 
-        if(user is null) return Result<string>.Failure("Credenciais inválidas");
+        if(user is null) return Result<LoginResult>.Failure("Credenciais inválidas");
 
         bool userValid = _passwordHasher.Verify(request.Password, user.PasswordHash);
-        if(!userValid) return Result<string>.Failure("Credenciais inválidas");
+        if(!userValid) return Result<LoginResult>.Failure("Credenciais inválidas");
+
+        // fetch the tenant's name so the panel can brand itself (white-label)
+        Company? company = await _companiesService.GetCompanyById(user.CompanyId);
 
         string token = _tokenGenerator.GenerateToken(user.Id, user.CompanyId, user.Email);
-        return Result<string>.Success(token);
+        return Result<LoginResult>.Success(new LoginResult(token, company?.Name ?? ""));
     }
 }

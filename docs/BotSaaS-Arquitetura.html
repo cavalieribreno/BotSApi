@@ -53,7 +53,7 @@
   <div class="meta">
     Plataforma SaaS de bot de IA para WhatsApp<br>
     C# .NET 10 · ASP.NET Core · MySQL · ADO.NET puro · Angular 21<br><br>
-    Atualizado em 02/08/2026 · Full-stack: cliente conversa por chat (Telegram) → Agendamento gravado (function calling) → painel do dono em Angular (visão + gestão), testado e2e
+    Atualizado em 05/08/2026 · Arquitetura Core / Capabilities / Modules · tool routing via IChatTool · cliente conversa (Telegram) → Agendamento gravado (function calling) → painel do dono, testado e2e
   </div>
 </div>
 
@@ -117,21 +117,26 @@ fechado como entregável principal.</p>
 </table>
 
 <h2>3. Arquitetura em camadas</h2>
-<p>Monolito <strong>modular</strong> (não microserviços). Três camadas com dependência de <strong>mão única</strong>:</p>
+<p>Monolito <strong>modular</strong> (não microserviços). Camadas com dependência de <strong>mão única</strong>:</p>
 <pre class="diagram">
-   Controllers ([ApiController])       Channels/ (Telegram · WhatsApp)
-   painel + API (JWT)                   entrada por mensagem (sem token)
+   Controllers (painel + API, JWT)     Channels/ (Telegram · WhatsApp)
             │                                   │
             └─────────────────┬─────────────────┘
                               ▼
   ┌───────────────────────────────────────────────────────┐
-  │  Core/  — o KERNEL (a essência do produto)             │
-  │                                                         │
-  │    Auth ───► Users ───► Companies        (Fase 1 ✅)    │
-  │   (login)   (usuário)   (tenant)                        │
-  │                                                         │
-  │    Conversations (histórico + IA) · Scheduling   ✅    │
-  │    Billing                                   (futuro)  │
+  │  Modules/  — nichos (Barber): regras próprias  (Fase 3)│
+  └───────────────────────────┬───────────────────────────┘
+                              │ depende de
+                              ▼
+  ┌───────────────────────────────────────────────────────┐
+  │  Capabilities/ — ações transacionais reusáveis         │
+  │    Appointments (agendar) ✅ · Ordering (pedir, futuro)│
+  └───────────────────────────┬───────────────────────────┘
+                              │ depende de
+                              ▼
+  ┌───────────────────────────────────────────────────────┐
+  │  Core/  — o KERNEL (universal — todo nicho usa)        │
+  │    Auth ───► Users ───► Companies · Conversations · IA │
   └───────────────────────────┬───────────────────────────┘
                               │ usa (nunca o contrário)
                               ▼
@@ -140,10 +145,9 @@ fechado como entregável principal.</p>
   │    Database · Security · Results · AI                  │
   └───────────────────────────┬───────────────────────────┘
                               ▼
-                           MySQL
-                        + LLM (HTTP)
+                           MySQL + LLM (HTTP)
 
-  Channels/ e Modules/ dependem do Core (mão única); Modules estendem por nicho.
+  Dependência mão única: Channels/Modules → Capabilities → Core → Shared.
 </pre>
 <div class="note"><strong>Regra de ouro:</strong> <code>Core</code> depende de <code>Shared</code>, <strong>nunca</strong> o contrário.
 "Usado por todos" não significa "núcleo" — Shared é o <em>chão</em>, Core é o <em>centro</em>.</div>
@@ -153,9 +157,10 @@ Quem tem regra (montar prompt, salvar histórico, decidir a ação) é o <strong
 
 <h3>Como saber onde pôr cada coisa</h3>
 <ul>
-  <li>Fala de empresa / conversa / plano → <strong>Core</strong> (kernel).</li>
+  <li>É universal — empresa / usuário / conversa (todo nicho usa) → <strong>Core</strong> (kernel).</li>
+  <li>É uma <strong>ação transacional</strong> reusável (agendar, pedir) → <strong>Capabilities</strong>.</li>
+  <li>É específico de um <strong>tipo de negócio</strong> (barbearia, restaurante) → <strong>Modules</strong>.</li>
   <li>Serve qualquer app C# do mundo (Result, hash, conexão, cliente HTTP de LLM) → <strong>Shared</strong>.</li>
-  <li>É específico de um nicho (barbearia, restaurante) → <strong>Modules</strong>.</li>
 </ul>
 
 <h2>4. Estrutura de pastas</h2>
@@ -180,14 +185,19 @@ src/
 │   │   ├── ConversationService.cs     IConversationService.cs   ConversationDTOs.cs
 │   │   ├── ConversationRepository.cs  IConversationRepository.cs
 │   │   ├── MessageRepository.cs       IMessageRepository.cs
-│   ├── Scheduling/        (agendamentos — a ação transacional)
-│   │   ├── SchedulingEntities.cs (Appointment, AppointmentStatus)
-│   │   ├── SchedulingService.cs      ISchedulingService.cs
-│   │   ├── AppointmentRepository.cs  IAppointmentRepository.cs
-│   ├── WhatsApp/  Billing/                          ← futuro
+│   │   └── Interfaces/IChatTool.cs     (contrato do roteador de tools — capabilities implementam)
+│   ├── Billing/                                     ← futuro (cobrança)
 │
-├── Modules/               ← nichos que estendem o Core
-│   └── Barber/            ← Fase 3
+├── Capabilities/          ← ações transacionais reusáveis (por família)
+│   └── Appointments/      (família "agendar" — barbearia, clínica, salão)
+│       ├── AppointmentEntities.cs (Appointment, AppointmentStatus)
+│       ├── AppointmentService.cs      IAppointmentService.cs
+│       ├── AppointmentRepository.cs   IAppointmentRepository.cs
+│       ├── AppointmentController.cs   IAvailabilityPolicy.cs (seam)
+│       └── Tools/RegisterAppointmentTool.cs   (IChatTool: registrar_agendamento)
+│
+├── Modules/               ← nichos/verticais (consomem Capabilities + regras)
+│   └── Barber/            (BarberAvailabilityPolicy) ← Fase 3
 │
 └── Shared/                ← base técnica
     ├── Database/   (IDatabase, MySqlDatabase, DbSession, DbCommandExtensions)
@@ -204,7 +214,7 @@ src/
   <tr><td><strong>Users</strong></td><td>Dono da entidade User e da gestão (criar, buscar por email; rota <code>/api/me</code>). Futuro: perfil, listar.</td><td>User, UserService, UserRepository, UserController</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Companies</strong></td><td>Os tenants. Dono de "o que é uma Company válida". Futuro: BotConfig, settings.</td><td>Company, CompaniesService, CompaniesRepository</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Conversations</strong></td><td>O fluxo do bot: acha/cria a conversa do cliente, salva mensagens, monta o histórico, chama a IA e salva a resposta. Substitui a memória em RAM por persistência no banco (por cliente). Entrada via <code>ConversationController</code> (<code>POST /api/conversations</code>, protegido).</td><td>Conversation, Message, ConversationService, ConversationController, 2 repositórios</td><td><span class="tag done">e2e</span></td></tr>
-  <tr><td><strong>Scheduling</strong></td><td>Os agendamentos — a <strong>ação transacional</strong>. Dono de "o que é um <code>Appointment</code> válido" (parseia data+hora, valida), da <strong>visão do dono</strong> (<code>GET /api/appointments</code>) e da <strong>gestão de status</strong> (<code>PATCH .../{id}/status</code>, tenant-scoped via <code>WHERE company_id</code>).</td><td>Appointment, AppointmentStatus, SchedulingService, AppointmentRepository, AppointmentController</td><td><span class="tag done">e2e</span></td></tr>
+  <tr><td><strong>Appointments</strong> <span class="small">(capability)</span></td><td>Os agendamentos — a <strong>ação transacional</strong> (família "agendar"). Dono de "o que é um <code>Appointment</code> válido" (parseia data+hora, valida), da <strong>visão do dono</strong> (<code>GET /api/appointments</code>) e da <strong>gestão de status</strong> (<code>PATCH .../{id}/status</code>, tenant-scoped via <code>WHERE company_id</code>). <strong>Nicho-agnóstica</strong>; a regra de disponibilidade é plugada por um <code>Module</code> via <code>IAvailabilityPolicy</code>.</td><td>Appointment, AppointmentStatus, AppointmentService, AppointmentRepository, AppointmentController, IAvailabilityPolicy</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Channels/Telegram</strong></td><td>Canal de entrada (teste). Um <code>BackgroundService</code> faz <em>long polling</em> no Telegram e roteia cada mensagem pelo mesmo <code>ConversationService</code>. O tenant é resolvido por config (<code>.env</code>); em produção, webhook + tabela <code>Channel</code>.</td><td>TelegramPollingService, TelegramDtos</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Shared/AI</strong></td><td>Costura neutra com o LLM. <code>IAiClient</code> esconde o provedor; traduz <code>systemPrompt</code>+histórico+<strong>tools</strong>, e devolve <strong>texto ou tool call</strong> (<code>AiResponse</code>).</td><td>IAiClient, Gemini/GroqAiClient, AiResponse, ToolDefinition, ChatMessage</td><td><span class="tag done">e2e</span></td></tr>
 </table>
@@ -325,7 +335,7 @@ Quando vários services dividirem transação, o <code>DbSession</code> vira UoW
 
 <h3>7.5 IA neutra — um contrato, dois provedores</h3>
 <p>O contrato é único e burro: <code>Task&lt;AiResponse&gt; GenerateReplyAsync(string systemPrompt, IReadOnlyList&lt;ChatMessage&gt; history, IReadOnlyList&lt;ToolDefinition&gt; tools)</code>.
-O client recebe o prompt-base, o histórico e as ferramentas disponíveis, e devolve um <code>AiResponse</code> — que é <strong>ou um texto</strong> (<code>TextReply</code>) <strong>ou um pedido de ferramenta</strong> (<code>ToolCallReply</code>). Quem monta o prompt, define as tools e persiste o histórico é o Core.
+O client recebe o prompt-base, o histórico e as ferramentas disponíveis, e devolve um <code>AiResponse</code> — que é <strong>ou um texto</strong> (<code>TextReply</code>) <strong>ou um pedido de ferramenta</strong> (<code>ToolCallReply</code>). Quem monta o prompt e persiste o histórico é o <code>Core/Conversations</code>; as <strong>tools são fornecidas pelas capabilities</strong> (via <code>IChatTool</code>) e o Conversations só as <strong>coleta e roteia</strong> (ver 7.7).
 Cada implementação traduz isso pro formato da sua API — e as diferenças <strong>provam</strong> o valor da abstração:</p>
 <table>
   <tr><th></th><th>Gemini</th><th>Groq (formato OpenAI)</th></tr>
@@ -342,9 +352,8 @@ nenhum caller muda. É a prova concreta de que a abstração não é enfeite.</d
 <p class="small"><strong>LLM é stateless:</strong> o modelo não tem memória. "Memória" = reenviar o system prompt + o histórico
 inteiro a cada chamada. Por isso o histórico precisa viver em algum lugar (o banco) e ter um teto (senão o custo e a latência crescem sem limite).</p>
 <div class="ok"><strong>Function calling — o coração transacional (provado e2e):</strong> o contrato evoluiu de <code>Task&lt;string&gt;</code> para <code>Task&lt;AiResponse&gt;</code> para o modelo poder, além de responder texto,
-<strong>pedir uma ação estruturada</strong> (<code>registrar_agendamento</code> com <code>servico/data/hora/nome</code>). As ferramentas vêm do <strong>Core</strong>
-(tipos neutros <code>ToolDefinition</code>/<code>ToolParameter</code>, por empresa/nicho no futuro); o client só <strong>formata</strong> pro provedor (Groq: <code>tools</code>/<code>tool_calls</code>).
-Tool = <strong>ação/verbo</strong>; o serviço é um <strong>parâmetro</strong>, não uma tool por item. <strong>Provado e2e no Groq:</strong> o modelo extraiu os args e o <code>Core/Scheduling</code> gravou o <code>Appointment</code> — conversa vira ação. A confirmação hoje é <strong>templada</strong>;
+<strong>pedir uma ação estruturada</strong> (<code>registrar_agendamento</code> com <code>servico/data/hora/nome</code>). Cada tool é <strong>dona da sua capability</strong> (via <code>IChatTool</code>, ver 7.7); o <code>Conversations</code> só coleta e roteia, e o client só <strong>formata</strong> pro provedor (Groq: <code>tools</code>/<code>tool_calls</code>). Tipos neutros <code>ToolDefinition</code>/<code>ToolParameter</code> ficam em <code>Shared/AI</code>.
+Tool = <strong>ação/verbo</strong>; o serviço é um <strong>parâmetro</strong>, não uma tool por item. <strong>Provado e2e no Groq:</strong> o modelo extraiu os args e o <code>Capabilities/Appointments</code> gravou o <code>Appointment</code> — conversa vira ação. A confirmação hoje é <strong>templada</strong>;
 o loop multi-turno (modelo frasear) e o tool calling do Gemini ficam pra depois.</div>
 
 <h3>7.6 System prompt dinâmico (por empresa)</h3>
@@ -353,6 +362,13 @@ o loop multi-turno (modelo frasear) e o tool calling do Gemini ficam pra depois.
 <strong>base (template) + dados da empresa (banco)</strong> montados em runtime. O <code>IAiClient</code> é burro:
 só recebe o prompt pronto e manda. Cada nicho poderá contribuir com contexto extra via
 <code>INichoConfig.BuildSystemPromptExtension()</code>.</p>
+
+<h3>7.7 Tool routing (IChatTool) — inversão de dependência</h3>
+<p>Cada tool que a IA pode chamar é uma classe <code>IChatTool</code> (interface no <code>Core/Conversations</code>) que a <strong>capability dona</strong> implementa —
+ela traz o <code>Definition</code> (o cardápio pra IA) + o <code>Handle</code> (executa a ação). O <code>ConversationService</code> recebe <code>IEnumerable&lt;IChatTool&gt;</code>
+(a DI injeta <strong>todas</strong> as registradas), monta o cardápio de todas e, no <code>ToolCallReply</code>, acha a tool <strong>pelo nome</strong> e chama o <code>Handle</code> dela — <strong>sem saber o que ela faz</strong>.</p>
+<div class="note"><strong>Por quê:</strong> antes o <code>Conversations</code> (Core) decorava o tool inline e dependia de <code>Capabilities/Appointments</code> — <strong>violação</strong> de direção (Core não pode depender de Capability). Agora a interface está no Core e as capabilities a implementam (<code>Appointments → Core</code>, direção certa). <strong>Ganho:</strong> adicionar um 2º tool = 1 classe nova + 1 linha na DI; o Conversations <strong>não muda</strong> (Open/Closed). O <code>registrar_agendamento</code> mora em <code>Capabilities/Appointments/Tools/RegisterAppointmentTool</code>.</div>
+<div class="ok"><strong>Provado e2e:</strong> conversa real (Telegram) → o roteador achou a <code>RegisterAppointmentTool</code> pelo nome → <code>Handle</code> gravou o Appointment. Build limpo.</div>
 
 <h2>8. Fluxo: Registro (transacional)</h2>
 <pre class="diagram">
@@ -418,11 +434,11 @@ histórico <strong>persistido no banco, por cliente</strong>.</p>
      │        └─ null? → cria a Conversation (cliente novo)
      ├─ InsertMessage (msg do cliente, Role=User)
      ├─ GetMessagesByConversation ──► carrega histórico (ORDER BY created_at)
-     ├─ converte List&lt;Message&gt; → List&lt;ChatMessage&gt; · monta as tools (registrar_agendamento)
-     ├─ IAiClient.GenerateReplyAsync(systemPrompt, history, tools) ──► LLM (Groq)
+     ├─ converte List&lt;Message&gt; → List&lt;ChatMessage&gt; · coleta os defs das IChatTool registradas
+     ├─ IAiClient.GenerateReplyAsync(systemPrompt, history, toolDefs) ──► LLM (Groq)
      │        ├─ TextReply     → resposta = texto
-     │        └─ ToolCallReply → parseia args → SchedulingService.CreateAppointment
-     │                            └─► grava Appointment · resposta = confirmação templada
+     │        └─ ToolCallReply → acha a IChatTool pelo NOME → tool.Handle(args)
+     │                            └─► (RegisterAppointmentTool, em Appointments) grava Appointment · confirmação
      └─ InsertMessage (resposta, Role=Assistant)
         ▼
   Result&lt;string&gt; (a resposta)  →  devolve ao cliente
@@ -434,7 +450,7 @@ a conversa é sempre buscada dentro do tenant.</div>
 na mesma conversa. O bot lembrou do pedido dito no 1º turno (memória via histórico no banco) e seguiu o system prompt
 (disse que ia "verificar o preço" em vez de inventar). Cadeia completa: token → tenant do JWT → service → LLM → grava → resposta.</div>
 <div class="ok"><strong>Transacional provado e2e (Groq):</strong> "quero agendar um corte de cabelo para 2026-08-05 às 09:00, meu nome é Breno" →
-o modelo chamou <code>registrar_agendamento</code> com os 4 args certos → o <code>SchedulingService</code> gravou o <code>Appointment</code>
+o modelo chamou <code>registrar_agendamento</code> com os 4 args certos → o <code>AppointmentService</code> gravou o <code>Appointment</code>
 (linha confirmada na tabela <code>appointments</code>) → confirmação templada de volta. <strong>A conversa virou ação estruturada</strong> — o bot deixou de tagarelar e passou a registrar.</div>
 <div class="note"><strong>Entrada atual vs. produção:</strong> hoje a entrada é o <code>ConversationController</code> protegido — o
 <code>companyId</code> sai do <strong>JWT</strong> (correto para uma entrada com token), e o body só traz <code>customerPhone</code> + <code>messageText</code>.
@@ -470,7 +486,7 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
   FASE 1  Auth / Users / Companies ........ ████████  registro ✅ login ✅ /api/me ✅
   FASE 2  Shared/AI (Gemini + Groq) ........ ████████  dois provedores e2e ✅
           Core/Conversations ............... ████████  fluxo e2e ✅ · conexão fora do LLM ✅
-          Function calling + Scheduling .... ████████  conversa → Appointment gravado, e2e ✅
+          Function calling + Appointments .... ████████  conversa → Appointment gravado, e2e ✅
           Painel do dono (Angular) ......... ████████  login + tabela + gestão + white-label, e2e ✅
           Canal Telegram (long polling) .... ████████  conversa real → agendamento no painel, e2e ✅
           Canal WhatsApp (webhook) ......... ░░░░░░░░  ◄── entrada de produção (troca o polling)
@@ -492,7 +508,7 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 <span class="tag done">Histórico no banco por cliente</span>
 <span class="tag done">Conexão fora do LLM</span>
 <span class="tag done">Validação de entrada (DataAnnotations)</span>
-<span class="tag done">Function calling + Scheduling e2e</span>
+<span class="tag done">Function calling + Appointments e2e</span>
 <span class="tag done">Agendamento transacional (conversa → banco)</span>
 <span class="tag done">Visão do dono (GET /appointments) e2e</span>
 <span class="tag done">Painel do dono em Angular (login + tabela)</span>
@@ -531,7 +547,7 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 </ul>
 <h3>Próximos passos</h3>
 <ol>
-  <li><strong>Extração de ação (function calling) — ✅ feito e testado e2e.</strong> A IA chama <code>registrar_agendamento</code> e o <code>Core/Scheduling</code> grava o <code>Appointment</code>. Restante: loop multi-turno (modelo frasear a confirmação) e tool calling do Gemini.</li>
+  <li><strong>Extração de ação (function calling) — ✅ feito e testado e2e.</strong> A IA chama <code>registrar_agendamento</code> e o <code>Capabilities/Appointments</code> grava o <code>Appointment</code>. Restante: loop multi-turno (modelo frasear a confirmação) e tool calling do Gemini.</li>
   <li><strong>Endurecer o fluxo de Conversa</strong> — teto de histórico e expiração por inatividade (conexão-fora-do-LLM e tratamento de falha da IA já feitos).</li>
   <li><strong>Pacote de erro</strong> — <code>Result.Error</code> virar código semântico; "email já existe" → HTTP <strong>409</strong> (<code>DbException.SqlState=="23000"</code> ou <code>MySqlException.Number==1062</code>).</li>
   <li><strong>Canal de WhatsApp</strong> — webhook + entidade <code>Channel</code>; <code>companyId</code> a partir do canal (não do body). Idempotência por message-id (WhatsApp reentrega).</li>
@@ -541,7 +557,7 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 <ul>
   <li><code>AuthService</code> ainda devolve <code>Result.Failure("Erro ao registrar")</code> (string) → código semântico.</li>
   <li>Leitura das envs JWT repetida (gerador + validador) → centralizar em options.</li>
-  <li><strong>Posse do tool <code>registrar_agendamento</code></strong> está na Conversations (declaração + args + handler); mover pra <code>Scheduling</code> e deixar a Conversations como roteador de tool calls — TODO no código, fazer no 2º nicho.</li>
+  <li><strong>Posse do tool — ✅ resolvido (05/08).</strong> O <code>registrar_agendamento</code> saiu da Conversations e virou <code>RegisterAppointmentTool : IChatTool</code> em <code>Capabilities/Appointments/Tools</code>; a Conversations virou <strong>roteador genérico</strong> (recebe <code>IEnumerable&lt;IChatTool&gt;</code>, roteia por nome). Consertou a violação Core→Capabilities.</li>
   <li><code>MessageRepository.GetMessagesByConversation</code> passa o <code>@conversationId</code> como <code>Guid</code> cru, enquanto os outros repos passam <code>.ToString()</code> — inconsistência (funciona, mas depende do formato de Guid do driver).</li>
   <li><strong>Canal Telegram por polling é temporário</strong> — trocar por <strong>webhook</strong> em produção (é o que o WhatsApp Cloud API exige; são mutuamente exclusivos). O reaproveitável entre os dois é o <code>ProcessMessage</code>.</li>
   <li><strong>Resolução de tenant no canal via <code>.env</code></strong> (<code>TELEGRAM_TEST_COMPANY_ID</code>) é provisória. Multi-tenant real = tabela <code>Channel</code> (<code>type</code>, <code>external_id</code>, <code>token</code> → <code>company_id</code>), populada no onboarding.</li>

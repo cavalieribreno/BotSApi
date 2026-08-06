@@ -1,7 +1,7 @@
 using System.Data.Common;
 using BotSaaS.Api.Shared.Database;
 
-namespace BotSaaS.Api.Core.Scheduling;
+namespace BotSaaS.Api.Capabilities.Appointments;
 
 // Dumb repo: runs SQL on the connection/transaction held by the shared session.
 public class AppointmentRepository : IAppointmentRepository

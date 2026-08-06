@@ -3,7 +3,7 @@ using BotSaaS.Api.Channels.Telegram;
 using BotSaaS.Api.Core.Auth;
 using BotSaaS.Api.Core.Companies;
 using BotSaaS.Api.Core.Conversations;
-using BotSaaS.Api.Core.Scheduling;
+using BotSaaS.Api.Capabilities.Appointments;
 using BotSaaS.Api.Core.Users;
 using BotSaaS.Api.Shared.AI;
 using BotSaaS.Api.Shared.Database;
@@ -31,7 +31,8 @@ builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
-builder.Services.AddScoped<ISchedulingService, SchedulingService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IChatTool, RegisterAppointmentTool>();
 
 // Telegram test channel: background loop that polls Telegram and routes messages through ConversationService.
 builder.Services.AddHostedService<TelegramPollingService>();

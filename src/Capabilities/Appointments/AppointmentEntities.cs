@@ -1,4 +1,4 @@
-namespace BotSaaS.Api.Core.Scheduling;
+namespace BotSaaS.Api.Capabilities.Appointments;
 
 // Appointment lifecycle. Explicit values -- persisted as INT, never reorder.
 public enum AppointmentStatus

@@ -1,6 +1,6 @@
-namespace BotSaaS.Api.Core.Scheduling;
+namespace BotSaaS.Api.Capabilities.Appointments;
 
-// Contract for appointment data access -- talks SQL.
+// Contract for appointment data access - talks SQL.
 public interface IAppointmentRepository
 {
     public Task InsertAppointment(Appointment appointment);

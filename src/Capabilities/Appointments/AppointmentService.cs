@@ -3,15 +3,15 @@ using System.Globalization;
 using BotSaaS.Api.Shared.Database;
 using BotSaaS.Api.Shared.Results;
 
-namespace BotSaaS.Api.Core.Scheduling;
+namespace BotSaaS.Api.Capabilities.Appointments;
 
-// Scheduling domain: create an appointment (from a conversation) and list a company's appointments.
-public class SchedulingService : ISchedulingService
+// Appointment domain: create an appointment (from a conversation) and list a company's appointments.
+public class AppointmentService : IAppointmentService
 {
     private readonly IAppointmentRepository _appointmentRepository;
     private readonly IDatabase _databaseConnection;
     private readonly DbSession _dbSession;
-    public SchedulingService(IAppointmentRepository appointmentRepository, IDatabase databaseConnection, DbSession dbSession)
+    public AppointmentService(IAppointmentRepository appointmentRepository, IDatabase databaseConnection, DbSession dbSession)
     {
         _appointmentRepository = appointmentRepository;
         _databaseConnection = databaseConnection;

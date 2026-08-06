@@ -3,17 +3,17 @@ using BotSaaS.Api.Shared.Results;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BotSaaS.Api.Core.Scheduling;
+namespace BotSaaS.Api.Capabilities.Appointments;
 // Owner's view: lists the appointments of the caller's company (tenant from the JWT).
 [Authorize]
 [ApiController]
 [Route("api/appointments")]
 public class AppointmentController : ControllerBase
 {
-    private readonly ISchedulingService _schedulingService;
-    public AppointmentController(ISchedulingService schedulingService)
+    private readonly IAppointmentService _appointmentService;
+    public AppointmentController(IAppointmentService appointmentService)
     {
-        _schedulingService = schedulingService;
+        _appointmentService = appointmentService;
     }
     [HttpGet]
     public async Task<IActionResult> GetAppointments()
@@ -23,7 +23,7 @@ public class AppointmentController : ControllerBase
         {
             return Unauthorized(new { error = "Empresa inválida"});
         }
-        List <Appointment> appointments = await _schedulingService.GetAppointments(companyGuid);
+        List <Appointment> appointments = await _appointmentService.GetAppointments(companyGuid);
 
         List<AppointmentResponse> response = new List<AppointmentResponse>();
         foreach(Appointment appointment in appointments)
@@ -50,7 +50,7 @@ public class AppointmentController : ControllerBase
             return BadRequest(new { error = "Status inválido" });
         }
 
-        Result<bool> result = await _schedulingService.UpdateAppointmentStatus(companyGuid, id, parsedStatus);
+        Result<bool> result = await _appointmentService.UpdateAppointmentStatus(companyGuid, id, parsedStatus);
         if (!result.IsSuccess)
         {
             return NotFound(new { error = result.Error });

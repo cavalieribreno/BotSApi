@@ -30,13 +30,17 @@ O cliente marca um horário conversando naturalmente; a IA extrai a ação e ela
 Monólito modular com dependência em mão única:
 
 ```
-Channels/  → adaptadores de entrada (Telegram, WhatsApp) que chamam o Core
-Modules/   → nichos/verticais que estendem o Core (ex: Barber)
-   ↓
-Core/      → o núcleo do produto (Auth, Users, Companies, Conversations, Scheduling, AI...)
-   ↓
-Shared/    → base técnica neutra (Results, Security, Database, AI)
+Channels/      → entrada por mensagem (Telegram, WhatsApp)
+Modules/       → nichos/verticais (ex: Barber): consomem Capabilities + regras próprias
+Capabilities/  → ações transacionais reusáveis (Appointments; futuro: Ordering...)
+Core/          → kernel universal (Auth, Users, Companies, Conversations, AI)
+Shared/        → base técnica neutra (Results, Security, Database, AI)
+
+dependência (mão única):  Channels / Modules  →  Capabilities  →  Core  →  Shared
 ```
+
+**Capability** = o que a plataforma sabe FAZER (agendar, pedir), reusável por vários nichos.
+**Module** = um TIPO de negócio (barbearia), que consome capabilities e pluga regras próprias.
 
 Decisões de design que guiam o código:
 
@@ -111,12 +115,15 @@ Abre em `http://localhost:4200`. Precisa do backend no ar (CORS já libera `loca
 src/
 ├── Channels/
 │   └── Telegram/     canal de teste (long polling) → injeta no ConversationService
-├── Core/
+├── Core/             kernel universal
 │   ├── Auth/          registro e login (orquestra o cadastro)
 │   ├── Users/         entidade User + gestão
 │   ├── Companies/     os tenants (empresas clientes)
-│   ├── Conversations/ conversa + mensagens (Conversation/Message + repositórios)
-│   └── Scheduling/    agendamentos (Appointment + service + repositório)
+│   └── Conversations/ conversa + mensagens + roteador genérico de tools (IChatTool)
+├── Capabilities/     ações transacionais reusáveis
+│   └── Appointments/  agendamentos (Appointment + service + repo + Tools/RegisterAppointmentTool + IAvailabilityPolicy)
+├── Modules/          nichos/verticais
+│   └── Barber/        regras do nicho (disponibilidade) — em construção
 └── Shared/
     ├── Results/     Result Pattern
     ├── Security/    hash de senha + JWT

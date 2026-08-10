@@ -47,7 +47,7 @@ public class AppointmentController : ControllerBase
         // enum name -> AppointmentStatus. IsDefined blocks bogus/out-of-range values (Enum.TryParse accepts any int).
         if (!Enum.TryParse<AppointmentStatus>(status, ignoreCase: true, out AppointmentStatus parsedStatus) || !Enum.IsDefined(parsedStatus))
         {
-            return BadRequest(new { error = "Status inválido" });
+            return BadRequest(new { error = "Status inválido." });
         }
 
         Result<bool> result = await _appointmentService.UpdateAppointmentStatus(companyGuid, id, parsedStatus);

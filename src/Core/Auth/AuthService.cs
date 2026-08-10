@@ -48,11 +48,13 @@ public class AuthService : IAuthService
 
             return Result<User>.Success(user); // return sucess with entity user
 
-        } catch (DbException)
+        } catch (DbException ex)
         {
             // any DB failure - undo everything (no orphan Company)
             await transaction.RollbackAsync();
-            return Result<User>.Failure("Erro ao registrar");
+            // SQLSTATE 23000 = integrity violation; in Register the only unique key is email.
+            if(ex.SqlState == "23000") return Result<User>.Conflict("Este e-mail já está cadastrado.");
+            return Result<User>.Failure("Não foi possível concluir o cadastro. Tente novamente.");
         }
     }
     // Login: find user by email, verify password, return a JWT. Read-only, no transaction.
@@ -65,10 +67,10 @@ public class AuthService : IAuthService
         // same message for missing email AND wrong password -- don't reveal which (security)
         User? user = await _userService.GetUserByEmail(request.Email);
 
-        if(user is null) return Result<LoginResult>.Failure("Credenciais inválidas");
+        if(user is null) return Result<LoginResult>.Unauthorized("E-mail ou senha incorretos.");
 
         bool userValid = _passwordHasher.Verify(request.Password, user.PasswordHash);
-        if(!userValid) return Result<LoginResult>.Failure("Credenciais inválidas");
+        if(!userValid) return Result<LoginResult>.Unauthorized("E-mail ou senha incorretos.");
 
         // fetch the tenant's name so the panel can brand itself (white-label)
         Company? company = await _companiesService.GetCompanyById(user.CompanyId);

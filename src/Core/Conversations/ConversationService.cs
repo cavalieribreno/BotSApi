@@ -169,7 +169,7 @@ public class ConversationService : IConversationService
         Conversation? conversation = await _conversationRepository.GetConversationByIdAndCompany(conversationId, companyId);
         if (conversation is null)
         {
-            return Result<ConversationMessages>.Failure("Conversa não encontrada");
+            return Result<ConversationMessages>.Failure("Conversa não encontrada.");
         }
 
         List<Message> messages = await _messageRepository.GetMessagesByConversation(conversationId);

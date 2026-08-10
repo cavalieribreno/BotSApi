@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using BotSaaS.Api.Core.Conversations;
 using BotSaaS.Api.Shared.AI;
@@ -5,7 +6,7 @@ using BotSaaS.Api.Shared.Results;
 
 namespace BotSaaS.Api.Capabilities.Appointments;
 
-// The registrar_agendamento tool -- owns its definition + handler, inside the Appointments capability.
+// The registrar_agendamento tool - owns its definition + handler, inside the Appointments capability.
 public class RegisterAppointmentTool : IChatTool
 {
     private readonly IAppointmentService _appointmentService;
@@ -36,7 +37,7 @@ public class RegisterAppointmentTool : IChatTool
         
         if(args is null)
         {
-            return "Desculpe, não consegui entender os dados do agendamento, Pode repetir?";
+            return "Desculpe, não consegui entender os dados do agendamento. Pode repetir?";
         }
 
         Result<Appointment> result = await _appointmentService.CreateAppointment(companyId, conversationId, args.Servico, args.Nome, args.Data, args.Hora);
@@ -45,6 +46,9 @@ public class RegisterAppointmentTool : IChatTool
         {
             return "Não consegui entender a data ou hora. Pode confirmar, por favor?";
         }
-        return $"Pronto, {args.Nome}! Seu {args.Servico} ficou agendado para {args.Data} às {args.Hora}";
+        // format from the parsed ScheduledAt (source of truth), pt-BR so the weekday reads in Portuguese
+        Appointment appointment = result.Value!;
+        string quando = appointment.ScheduledAt.ToString("dddd, dd/MM 'às' HH:mm", new CultureInfo("pt-BR"));
+        return $"Pronto, {args.Nome}! Seu {args.Servico} ficou agendado para {quando}.";
     }
 }

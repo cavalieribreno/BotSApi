@@ -29,7 +29,7 @@ public class AppointmentRepository : IAppointmentRepository
         await command.ExecuteNonQueryAsync();
     }
 
-    // All appointments of a company, soonest-first. Lista vazia se nenhum, nunca null.
+    // All appointments of a company, soonest-first. List empty, never null.
     public async Task<List<Appointment>> GetAppointmentsByCompany(Guid companyId)
     {
         List<Appointment> appointments = new List<Appointment>();
@@ -59,7 +59,7 @@ public class AppointmentRepository : IAppointmentRepository
     }
 
     // Updates a company's appointment status. Returns rows affected (0 = not found / not this company).
-    public async Task<int> UpdateStatus(Guid appointmentId, Guid companyId, AppointmentStatus status)
+    public async Task<int> UpdateAppointmentStatus(Guid appointmentId, Guid companyId, AppointmentStatus status)
     {
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;

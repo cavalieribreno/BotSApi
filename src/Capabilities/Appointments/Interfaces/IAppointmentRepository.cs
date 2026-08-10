@@ -5,5 +5,5 @@ public interface IAppointmentRepository
 {
     public Task InsertAppointment(Appointment appointment);
     public Task<List<Appointment>> GetAppointmentsByCompany(Guid companyId);
-    public Task<int> UpdateStatus(Guid appointmentId, Guid companyId, AppointmentStatus status);
+    public Task<int> UpdateAppointmentStatus(Guid appointmentId, Guid companyId, AppointmentStatus status);
 }

@@ -19,7 +19,17 @@ public class AuthController : ControllerBase
     {
         Result<User> result = await _authService.Register(request);
 
-        if(!result.IsSuccess) return BadRequest(new { error = result.Error });
+        if (!result.IsSuccess)
+        {
+            if(result.ErrorType == ErrorType.Conflict)
+            {
+                return Conflict(new { error = result.Error });
+            }
+            else
+            {
+                return BadRequest(new { error = result.Error });
+            }
+        }
 
         // map to UserResponse -- never return the User raw (it carries the password hash)
         User user = result.Value!;

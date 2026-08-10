@@ -54,16 +54,16 @@ public class AppointmentService : IAppointmentService
     }
 
     // Owner action: change an appointment's status (tenant-scoped). 0 rows updated -> not found for this company.
-    public async Task<Result<bool>> UpdateAppointmentStatus(Guid companyId, Guid appointmentId, AppointmentStatus status)
+    public async Task<Result<bool>> UpdateAppointmentStatus(Guid appointmentId, Guid companyId, AppointmentStatus status)
     {
         using DbConnection connection = _databaseConnection.CreateConnection();
         _dbSession.Connection = connection;
         await connection.OpenAsync();
 
-        int rows = await _appointmentRepository.UpdateStatus(appointmentId, companyId, status);
+        int rows = await _appointmentRepository.UpdateAppointmentStatus(appointmentId, companyId, status);
         if (rows == 0)
         {
-            return Result<bool>.Failure("Agendamento não encontrado");
+            return Result<bool>.Failure("Agendamento não encontrado.");
         }
         return Result<bool>.Success(true);
     }

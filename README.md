@@ -121,7 +121,7 @@ src/
 │   ├── Companies/     os tenants (empresas clientes)
 │   └── Conversations/ conversa + mensagens + roteador genérico de tools (IChatTool)
 ├── Capabilities/     ações transacionais reusáveis
-│   └── Appointments/  agendamentos (Appointment + service + repo + Tools/RegisterAppointmentTool + IAvailabilityPolicy)
+│   └── Appointments/  agendamentos (Appointment + service + repo + Tools/RegisterAppointmentTool)
 ├── Modules/          nichos/verticais
 │   └── Barber/        regras do nicho (disponibilidade) — em construção
 └── Shared/

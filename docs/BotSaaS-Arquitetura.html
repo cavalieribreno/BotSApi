@@ -51,7 +51,7 @@
   <h1>BotSaaS</h1>
   <div class="sub">Documento de Arquitetura &amp; Design</div>
   <div class="meta">
-    Plataforma SaaS de bot de IA para WhatsApp<br>
+    Plataforma SaaS de bot de IA por chat (WhatsApp / Telegram)<br>
     C# .NET 10 · ASP.NET Core · MySQL · ADO.NET puro · Angular 21<br><br>
     Atualizado em 05/08/2026 · Arquitetura Core / Capabilities / Modules · tool routing via IChatTool · cliente conversa (Telegram) → Agendamento gravado (function calling) → painel do dono, testado e2e
   </div>
@@ -77,7 +77,7 @@
 </ol>
 
 <h2>1. Visão do produto</h2>
-<p>SaaS de bot de IA para WhatsApp voltado a <strong>pequenos negócios</strong>. O cliente paga
+<p>SaaS de bot de IA por chat (WhatsApp é o alvo de produção; Telegram já funciona) voltado a <strong>pequenos negócios</strong>. O cliente paga
 mensalidade e recebe um bot já configurado para o negócio dele, sem precisar saber de tecnologia.</p>
 <div class="note"><strong>Importante:</strong> o produto é uma <strong>plataforma</strong>, não "um bot".
 O bot é uma das funcionalidades dentro da plataforma. Cada loja é um <em>tenant</em> (uma <code>Company</code>),
@@ -193,11 +193,12 @@ src/
 │       ├── AppointmentEntities.cs (Appointment, AppointmentStatus)
 │       ├── AppointmentService.cs      IAppointmentService.cs
 │       ├── AppointmentRepository.cs   IAppointmentRepository.cs
-│       ├── AppointmentController.cs   IAvailabilityPolicy.cs (seam)
+│       ├── AppointmentController.cs
 │       └── Tools/RegisterAppointmentTool.cs   (IChatTool: registrar_agendamento)
+│       (IAvailabilityPolicy — seam de disponibilidade — planejado, Fase 3, ainda não existe)
 │
 ├── Modules/               ← nichos/verticais (consomem Capabilities + regras)
-│   └── Barber/            (BarberAvailabilityPolicy) ← Fase 3
+│   └── Barber/            (scaffold vazio — regras do nicho) ← Fase 3, não iniciado
 │
 └── Shared/                ← base técnica
     ├── Database/   (IDatabase, MySqlDatabase, DbSession, DbCommandExtensions)
@@ -214,7 +215,7 @@ src/
   <tr><td><strong>Users</strong></td><td>Dono da entidade User e da gestão (criar, buscar por email; rota <code>/api/me</code>). Futuro: perfil, listar.</td><td>User, UserService, UserRepository, UserController</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Companies</strong></td><td>Os tenants. Dono de "o que é uma Company válida". Futuro: BotConfig, settings.</td><td>Company, CompaniesService, CompaniesRepository</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Conversations</strong></td><td>O fluxo do bot: acha/cria a conversa do cliente, salva mensagens, monta o histórico, chama a IA e salva a resposta. Substitui a memória em RAM por persistência no banco (por cliente). Entrada via <code>ConversationController</code> (<code>POST /api/conversations</code>, protegido).</td><td>Conversation, Message, ConversationService, ConversationController, 2 repositórios</td><td><span class="tag done">e2e</span></td></tr>
-  <tr><td><strong>Appointments</strong> <span class="small">(capability)</span></td><td>Os agendamentos — a <strong>ação transacional</strong> (família "agendar"). Dono de "o que é um <code>Appointment</code> válido" (parseia data+hora, valida), da <strong>visão do dono</strong> (<code>GET /api/appointments</code>) e da <strong>gestão de status</strong> (<code>PATCH .../{id}/status</code>, tenant-scoped via <code>WHERE company_id</code>). <strong>Nicho-agnóstica</strong>; a regra de disponibilidade é plugada por um <code>Module</code> via <code>IAvailabilityPolicy</code>.</td><td>Appointment, AppointmentStatus, AppointmentService, AppointmentRepository, AppointmentController, IAvailabilityPolicy</td><td><span class="tag done">e2e</span></td></tr>
+  <tr><td><strong>Appointments</strong> <span class="small">(capability)</span></td><td>Os agendamentos — a <strong>ação transacional</strong> (família "agendar"). Dono de "o que é um <code>Appointment</code> válido" (parseia data+hora, valida), da <strong>visão do dono</strong> (<code>GET /api/appointments</code>) e da <strong>gestão de status</strong> (<code>PATCH .../{id}/status</code>, tenant-scoped via <code>WHERE company_id</code>). <strong>Nicho-agnóstica</strong>; a regra de disponibilidade (anti-double-booking) <strong>será</strong> plugada por um <code>Module</code> via <code>IAvailabilityPolicy</code> — <em>planejado (Fase 3), ainda não existe no código</em>.</td><td>Appointment, AppointmentStatus, AppointmentService, AppointmentRepository, AppointmentController, DTOs, Tools/RegisterAppointmentTool</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Channels/Telegram</strong></td><td>Canal de entrada (teste). Um <code>BackgroundService</code> faz <em>long polling</em> no Telegram e roteia cada mensagem pelo mesmo <code>ConversationService</code>. O tenant é resolvido por config (<code>.env</code>); em produção, webhook + tabela <code>Channel</code>.</td><td>TelegramPollingService, TelegramDtos</td><td><span class="tag done">e2e</span></td></tr>
   <tr><td><strong>Shared/AI</strong></td><td>Costura neutra com o LLM. <code>IAiClient</code> esconde o provedor; traduz <code>systemPrompt</code>+histórico+<strong>tools</strong>, e devolve <strong>texto ou tool call</strong> (<code>AiResponse</code>).</td><td>IAiClient, Gemini/GroqAiClient, AiResponse, ToolDefinition, ChatMessage</td><td><span class="tag done">e2e</span></td></tr>
 </table>
@@ -474,7 +475,7 @@ e lê o conteúdo. A assinatura só garante que ninguém alterou. Por isso: nada
 <table>
   <tr><th>Lifetime</th><th>Significado</th><th>Quem</th></tr>
   <tr><td><strong>Singleton</strong></td><td>1 instância para o app inteiro (sem estado)</td><td><code>IDatabase</code>, <code>IPasswordHasher</code>, <code>IJwtTokenGenerator</code></td></tr>
-  <tr><td><strong>Scoped</strong></td><td>1 instância por requisição</td><td><code>DbSession</code>; repos e services de Users/Companies/Auth/Conversations</td></tr>
+  <tr><td><strong>Scoped</strong></td><td>1 instância por requisição</td><td><code>DbSession</code>; repos e services de Users/Companies/Auth/Conversations/<strong>Appointments</strong>; o <code>IChatTool</code> (<code>RegisterAppointmentTool</code>)</td></tr>
   <tr><td><strong>HttpClient tipado</strong></td><td><code>AddHttpClient&lt;IAiClient, X&gt;</code> — gerencia o <code>HttpClient</code> do provedor de IA</td><td><code>GeminiAiClient</code> / <code>GroqAiClient</code> (a troca de provedor é aqui)</td></tr>
   <tr><td><strong>Transient</strong></td><td>1 nova a cada pedido</td><td>(não usado ainda)</td></tr>
 </table>
@@ -529,6 +530,8 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 <span class="tag wip">Gemini tool calling</span>
 <span class="tag wip">Webhook (troca o polling do Telegram)</span>
 <span class="tag wip">Slot-filling (garantir dados antes do tool)</span>
+<span class="tag todo">Regra de disponibilidade (IAvailabilityPolicy + Barber)</span>
+<span class="tag todo">Catálogo de serviços (duração por empresa)</span>
 </p>
 
 <h2>14. Pontos de atenção &amp; próximos passos</h2>
@@ -547,11 +550,11 @@ o <code>AuthService</code> e os repos recebem a <strong>mesma</strong> caixa, en
 </ul>
 <h3>Próximos passos</h3>
 <ol>
-  <li><strong>Extração de ação (function calling) — ✅ feito e testado e2e.</strong> A IA chama <code>registrar_agendamento</code> e o <code>Capabilities/Appointments</code> grava o <code>Appointment</code>. Restante: loop multi-turno (modelo frasear a confirmação) e tool calling do Gemini.</li>
-  <li><strong>Endurecer o fluxo de Conversa</strong> — teto de histórico e expiração por inatividade (conexão-fora-do-LLM e tratamento de falha da IA já feitos).</li>
+  <li><strong>Regra de disponibilidade (Fase 3) — o próximo item.</strong> Criar o seam <code>IAvailabilityPolicy</code> em <code>Appointments</code> + a implementação <code>BarberAvailabilityPolicy</code> em <code>Modules/Barber</code> (hoje um scaffold vazio); o <code>AppointmentService</code> consulta antes de gravar (anti-double-booking). Desenho: checar por <strong>janela</strong> <code>[início, início+duração)</code> com a duração parametrizável — default fixo agora, catálogo de serviços por empresa depois.</li>
+  <li><strong>Endurecer o fluxo de Conversa</strong> — teto de histórico, expiração por inatividade e loop multi-turno (modelo frasear a confirmação). Conexão-fora-do-LLM e tratamento de falha da IA já feitos.</li>
   <li><strong>Pacote de erro</strong> — <code>Result.Error</code> virar código semântico; "email já existe" → HTTP <strong>409</strong> (<code>DbException.SqlState=="23000"</code> ou <code>MySqlException.Number==1062</code>).</li>
-  <li><strong>Canal de WhatsApp</strong> — webhook + entidade <code>Channel</code>; <code>companyId</code> a partir do canal (não do body). Idempotência por message-id (WhatsApp reentrega).</li>
-  <li><strong>Painel do dono</strong> — ler os <code>Appointment</code> do banco (a "visão do dono") — primeira parte visível do produto.</li>
+  <li><strong>Canal de WhatsApp</strong> — webhook + entidade <code>Channel</code>; <code>companyId</code> a partir do canal (não do body). Idempotência por message-id (WhatsApp reentrega). Troca o polling do Telegram.</li>
+  <li><strong>Catálogo de serviços + Configurações</strong> — <code>Service</code> (nome + duração + preço) por empresa; o dono configura, e a disponibilidade passa a ler a duração real. Evolui o <code>service_name</code> string atual.</li>
 </ol>
 <h3>TODOs no código</h3>
 <ul>

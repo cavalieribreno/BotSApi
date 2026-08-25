@@ -44,7 +44,14 @@ public class RegisterAppointmentTool : IChatTool
 
         if (!result.IsSuccess)
         {
-            return "Não consegui entender a data ou hora. Pode confirmar, por favor?";
+            if(result.ErrorType == ErrorType.Conflict)
+            {
+                return "Esse horário não está disponível. Quer tentar outro?";
+            }
+            else
+            {
+                return "Não consegui entender a data ou hora. Pode confirmar, por favor?";
+            }
         }
         // format from the parsed ScheduledAt (source of truth), pt-BR so the weekday reads in Portuguese
         Appointment appointment = result.Value!;

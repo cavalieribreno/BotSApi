@@ -70,4 +70,20 @@ public class AppointmentRepository : IAppointmentRepository
 
         return await command.ExecuteNonQueryAsync();
     }
+
+    // Dumb existence check: is any active appointment within [start, end] (BETWEEN, inclusive both ends)?
+    // The policy decides the window's width (exact minute vs overlap range); the repo only asks the DB.
+    public async Task<bool> SlotTaken(Guid companyId, DateTime start, DateTime end)
+    {
+        using DbCommand command = _dbSession.Connection.CreateCommand();
+        command.Transaction = _dbSession.Transaction;
+        command.CommandText = "SELECT EXISTS (SELECT 1 FROM appointments WHERE company_id = @company_id AND scheduled_at BETWEEN @start AND @end AND status IN (@pending, @confirmed))";
+        command.AddParameter("@company_id", companyId.ToString());
+        command.AddParameter("@start", start);
+        command.AddParameter("@end", end);
+        command.AddParameter("@pending", (int)AppointmentStatus.Pending);
+        command.AddParameter("@confirmed", (int)AppointmentStatus.Confirmed);
+
+        return Convert.ToBoolean(await command.ExecuteScalarAsync());
+    }
 }

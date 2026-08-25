@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Globalization;
+using BotSaaS.Api.Core.Companies;
 using BotSaaS.Api.Shared.Database;
 using BotSaaS.Api.Shared.Results;
 
@@ -10,11 +11,15 @@ public class AppointmentService : IAppointmentService
 {
     private readonly IAppointmentRepository _appointmentRepository;
     private readonly IDatabase _databaseConnection;
+    private readonly ICompaniesRepository _companiesRepository;
+    private readonly IAvailabilityPolicy _availabilityPolicy;
     private readonly DbSession _dbSession;
-    public AppointmentService(IAppointmentRepository appointmentRepository, IDatabase databaseConnection, DbSession dbSession)
+    public AppointmentService(IAppointmentRepository appointmentRepository, IDatabase databaseConnection, ICompaniesRepository companiesRepository, IAvailabilityPolicy availabilityPolicy, DbSession dbSession)
     {
         _appointmentRepository = appointmentRepository;
         _databaseConnection = databaseConnection;
+        _companiesRepository = companiesRepository;
+        _availabilityPolicy = availabilityPolicy;
         _dbSession = dbSession;
     }
 
@@ -26,6 +31,13 @@ public class AppointmentService : IAppointmentService
         {
             return Result<Appointment>.Failure("Data ou hora inválida");
         }
+        
+        using DbConnection connection = _databaseConnection.CreateConnection();
+        _dbSession.Connection = connection;
+        await connection.OpenAsync();
+
+        using DbTransaction transaction = await connection.BeginTransactionAsync();
+        _dbSession.Transaction = transaction;
 
         Appointment appointment = new Appointment
         {
@@ -38,9 +50,23 @@ public class AppointmentService : IAppointmentService
             Status = AppointmentStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
-
-        await _appointmentRepository.InsertAppointment(appointment);
-        return Result<Appointment>.Success(appointment);
+        try
+        {
+            await _companiesRepository.LockCompany(companyId);
+            if(!await _availabilityPolicy.IsSlotFree(companyId, scheduledAt))
+            {
+                await transaction.RollbackAsync();
+                return Result<Appointment>.Conflict("Esse horário não está disponível.");
+            }
+            await _appointmentRepository.InsertAppointment(appointment);
+            await transaction.CommitAsync();
+            return Result<Appointment>.Success(appointment); 
+        }
+        catch (DbException)
+        {
+            await transaction.RollbackAsync();
+            return Result<Appointment>.Failure("Não foi possível concluir o agendamento. Tente novamente.");
+        }
     }
 
     // Owner's view: all appointments of a company. Entry point (from a controller), so it opens its own connection.

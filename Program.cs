@@ -32,6 +32,7 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IAvailabilityPolicy, GenericAvailabilityPolicy>();
 builder.Services.AddScoped<IChatTool, RegisterAppointmentTool>();
 
 // Telegram test channel: background loop that polls Telegram and routes messages through ConversationService.

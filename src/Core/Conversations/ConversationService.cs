@@ -105,42 +105,44 @@ public class ConversationService : IConversationService
             return Result<string>.Failure("Erro ao gerar resposta da IA");
         }
 
-        // 3) resolve the reply (text or tool call) + write it -- one connection scope
+        // 3a) resolve the reply (text or tool call) - no connection; tools open their own
         string response;
+        
+        if (aiResponse is TextReply text)
+        {
+            response = text.Text;
+        }
+        else if (aiResponse is ToolCallReply toolCall)
+        {
+            IChatTool? chosen = null;
+            foreach(IChatTool tool in _chatTools)
+            {
+                if(tool.Definition.Name == toolCall.Name)
+                {
+                    chosen = tool; break;
+                }
+            }
+            if(chosen == null)
+            {
+                response = "Desculpe, não entendi o pedido";
+            }
+            else
+            {
+                response = await chosen.Handle(companyId, conversationId, toolCall.ArgumentsJson);
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException();
+        }
+        // 3b) write the assistant message - own connection scope
         try
         {
             using DbConnection connection = _databaseConnection.CreateConnection();
             _dbSession.Connection = connection;
+            _dbSession.Transaction = null!; // possible open transaction by tool
             await connection.OpenAsync();
-
-            if (aiResponse is TextReply text)
-            {
-                response = text.Text;
-            }
-            else if (aiResponse is ToolCallReply toolCall)
-            {
-                IChatTool? chosen = null;
-                foreach(IChatTool tool in _chatTools)
-                {
-                    if(tool.Definition.Name == toolCall.Name)
-                    {
-                        chosen = tool; break;
-                    }
-                }
-                if(chosen == null)
-                {
-                    response = "Desculpe, não entendi o pedido";
-                }
-                else
-                {
-                    response = await chosen.Handle(companyId, conversationId, toolCall.ArgumentsJson);
-                }
-            }
-            else
-            {
-                throw new InvalidOperationException();
-            }
-
+            
             Message assistantMessage = new Message
             {
                 Id = Guid.NewGuid(),
@@ -155,7 +157,7 @@ public class ConversationService : IConversationService
         {
             return Result<string>.Failure("Erro ao salvar resposta");
         }
-
+        
         return Result<string>.Success(response);
     }
     

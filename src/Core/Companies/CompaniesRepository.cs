@@ -44,4 +44,13 @@ public class CompaniesRepository : ICompaniesRepository
             CreatedAt = (DateTime)reader["created_at"]
         };
     }
+
+    public async Task LockCompany(Guid id)
+    {
+        using DbCommand command = _dbSession.Connection.CreateCommand();
+        command.Transaction = _dbSession.Transaction;
+        command.CommandText = "SELECT id FROM companies WHERE id = @id FOR UPDATE";
+        command.AddParameter("@id", id.ToString());
+        await command.ExecuteNonQueryAsync();
+    }
 }

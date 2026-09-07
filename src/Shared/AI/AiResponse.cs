@@ -7,4 +7,4 @@ public abstract record AiResponse;
 public record TextReply(string Text) : AiResponse;
 
 // The model requested a tool call - Name + raw JSON args (Core parses; Shared stays dumb).
-public record ToolCallReply(string Name, string ArgumentsJson) : AiResponse;
+public record ToolCallReply(string Id, string Name, string ArgumentsJson) : AiResponse;

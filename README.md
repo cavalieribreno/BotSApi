@@ -65,7 +65,8 @@ Decisões de design que guiam o código:
 - ✅ Visão do dono — `GET /api/appointments` lista os agendamentos da empresa (tenant do JWT), testado e2e
 - ✅ **Painel do dono em Angular** — login + tabela de agendamentos + **gestão de status** (confirmar/concluir/cancelar) + **ver a conversa** que gerou cada agendamento, testado e2e
 - ✅ **Canal de mensagens real (Telegram)** — bot por *long polling* roteando cada mensagem pelo mesmo `ConversationService` da API; testado e2e (conversa real no Telegram → agendamento no painel)
-- 🔜 Webhook de WhatsApp, regras por nicho (disponibilidade/anti-double-booking), cobrança
+- ✅ **Regra de disponibilidade (anti-double-booking)** — dois clientes não fecham o mesmo horário; a segunda tentativa é recusada na gravação, testado e2e
+- 🔜 Webhook de WhatsApp, cobrança
 
 ## Endpoints
 
@@ -121,9 +122,10 @@ src/
 │   ├── Companies/     os tenants (empresas clientes)
 │   └── Conversations/ conversa + mensagens + roteador genérico de tools (IChatTool)
 ├── Capabilities/     ações transacionais reusáveis
-│   └── Appointments/  agendamentos (Appointment + service + repo + Tools/RegisterAppointmentTool)
+│   └── Appointments/  agendamentos (Appointment + service + repo + Tools/RegisterAppointmentTool
+│                      + IAvailabilityPolicy/GenericAvailabilityPolicy — anti-double-booking)
 ├── Modules/          nichos/verticais
-│   └── Barber/        regras do nicho (disponibilidade) — em construção
+│   └── Barber/        regras do nicho — BarberAvailabilityPolicy (disponibilidade/anti-double-booking)
 └── Shared/
     ├── Results/     Result Pattern
     ├── Security/    hash de senha + JWT

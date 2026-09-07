@@ -25,21 +25,22 @@ public class GeminiAiClient : IAiClient
 
         foreach(ChatMessage message in history)
         {
+            // Only text-carrying forms map to Gemini. Tool call/result never occur here: this client ignores `tools`
+            // (see TODO above), so the model never emits a ToolCallReply and the loop never appends those forms.
             string role;
-            if(message.Role == ChatRole.User)
+            string text;
+            switch (message)
             {
-                role = "user";
-            }
-            else
-            {
-                role = "model";
+                case UserMessage u: role = "user"; text = u.Content; break;
+                case AssistantMessage a: role = "model"; text = a.Content; break;
+                default: continue;
             }
             contents.Add(new
             {
                 role = role,
                 parts = new[]
                 {
-                    new { text = message.Content }
+                    new { text = text }
                 }
             });
         }

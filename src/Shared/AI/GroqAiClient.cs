@@ -26,20 +26,37 @@ public class GroqAiClient : IAiClient
 
         foreach(ChatMessage message in history)
         {
-            string role;
-            if(message.Role == ChatRole.User)
+            switch (message)
             {
-                role = "user";
+                case UserMessage u:
+                    contents.Add( new { role = "user", content = u.Content });
+                    break;
+
+                case AssistantMessage a:
+                    contents.Add( new { role = "assistant", content = a.Content });
+                    break;
+                
+                case AssistantToolCall atc:
+                    contents.Add( new 
+                    {   
+                        role = "assistant",
+                        content = (string?) null,
+                        tool_calls = new[]
+                        {
+                            new
+                            {
+                                id = atc.Id,
+                                type = "function",
+                                function = new { name = atc.Name, arguments = atc.ArgumentsJson }
+                            }
+                        } 
+                    });
+                    break;
+                
+                case ToolResult tr:
+                    contents.Add( new { role = "tool", tool_call_id = tr.ToolCallId, content = tr.Content });
+                    break;
             }
-            else
-            {
-                role = "assistant";
-            }
-            contents.Add( new
-            {
-                role = role,
-                content = message.Content
-            });
         }
         string url = $"https://api.groq.com/openai/v1/chat/completions";
 
@@ -74,7 +91,6 @@ public class GroqAiClient : IAiClient
                 }
             });
         }
-
         var requestBody = new
         {
             model = _modelGroq,
@@ -97,8 +113,8 @@ public class GroqAiClient : IAiClient
         GroqMessage groqMessage = responseBody.Choices[0].Message;
         if(groqMessage.ToolCalls is not null && groqMessage.ToolCalls.Count > 0)
         {
-            GroqFunction function = groqMessage.ToolCalls[0].Function;
-            return new ToolCallReply(function.Name, function.Arguments);
+            GroqToolCall groqToolCall = groqMessage.ToolCalls[0];
+            return new ToolCallReply(groqToolCall.Id, groqToolCall.Function.Name, groqToolCall.Function.Arguments);
         }
         // plain text reply
         else

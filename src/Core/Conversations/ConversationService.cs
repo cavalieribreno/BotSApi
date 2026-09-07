@@ -69,8 +69,14 @@ public class ConversationService : IConversationService
 
             foreach(Message findMessage in messages)
             {
-                ChatMessage chatMessage = new ChatMessage(findMessage.Role, findMessage.Content);
-                chatHistory.Add(chatMessage);
+                if(findMessage.Role == ChatRole.User)
+                {
+                    chatHistory.Add(new UserMessage(findMessage.Content));
+                }
+                else
+                {
+                    chatHistory.Add(new AssistantMessage(findMessage.Content));
+                }
             }
         }
         catch (DbException)
@@ -79,7 +85,7 @@ public class ConversationService : IConversationService
         }
 
         // 2) LLM - no DB connection open here
-        AiResponse aiResponse;
+        string response;
         try
         {
             string baseSystemPrompt = Environment.GetEnvironmentVariable("SYSTEM_PROMPT")
@@ -98,44 +104,61 @@ public class ConversationService : IConversationService
                 toolDefs.Add(tool.Definition);
             }
 
-            aiResponse = await _aiClient.GenerateReplyAsync(systemPrompt, chatHistory, toolDefs);
+            // Multi-turn: keep asking the model until it phrases a text reply (or we hit the ceiling).
+            string? finalText = null;
+            const int maxTurns = 3;
+
+            for(int turn = 0; turn < maxTurns && finalText is null; turn++)
+            {
+                AiResponse aiResponse = await _aiClient.GenerateReplyAsync(systemPrompt, chatHistory, toolDefs);
+                
+                if(aiResponse is TextReply text)
+                {
+                    finalText = text.Text;
+                }
+                else if(aiResponse is ToolCallReply toolCall)
+                {
+                    IChatTool? chosen = null;
+                    foreach(IChatTool tool in _chatTools)
+                    {
+                        if(tool.Definition.Name == toolCall.Name)
+                        {
+                            chosen = tool;
+                            break;
+                        }
+                    }
+                    if(chosen is null)
+                    {
+                        finalText = "Desculpe, não entendi o pedido";
+                    }
+                    else
+                    {
+                        ToolOutcome toolOutcome = await chosen.Handle(companyId, conversationId, toolCall.ArgumentsJson);
+                        if (toolOutcome.FinalResponse)
+                        {
+                            finalText = toolOutcome.Content;
+                        }
+                        else
+                        {
+                            // feed the call + its result back so the model can phrase the reply next turn
+                            chatHistory.Add(new AssistantToolCall(toolCall.Id, toolCall.Name, toolCall.ArgumentsJson));
+                            chatHistory.Add(new ToolResult(toolCall.Id, toolOutcome.Content));
+                        }
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("AiResponse inesperado");
+                }
+            }
+            response = finalText ?? "Tudo certo por aqui! Posso ajudar em mais alguma coisa?"; // ceiling hit
         }
         catch (AiClientException)
         {
             return Result<string>.Failure("Erro ao gerar resposta da IA");
         }
 
-        // 3a) resolve the reply (text or tool call) - no connection; tools open their own
-        string response;
-        
-        if (aiResponse is TextReply text)
-        {
-            response = text.Text;
-        }
-        else if (aiResponse is ToolCallReply toolCall)
-        {
-            IChatTool? chosen = null;
-            foreach(IChatTool tool in _chatTools)
-            {
-                if(tool.Definition.Name == toolCall.Name)
-                {
-                    chosen = tool; break;
-                }
-            }
-            if(chosen == null)
-            {
-                response = "Desculpe, não entendi o pedido";
-            }
-            else
-            {
-                response = await chosen.Handle(companyId, conversationId, toolCall.ArgumentsJson);
-            }
-        }
-        else
-        {
-            throw new InvalidOperationException();
-        }
-        // 3b) write the assistant message - own connection scope
+        // 3) write the assistant message - own connection scope
         try
         {
             using DbConnection connection = _databaseConnection.CreateConnection();
@@ -156,8 +179,7 @@ public class ConversationService : IConversationService
         catch (DbException)
         {
             return Result<string>.Failure("Erro ao salvar resposta");
-        }
-        
+        } 
         return Result<string>.Success(response);
     }
     

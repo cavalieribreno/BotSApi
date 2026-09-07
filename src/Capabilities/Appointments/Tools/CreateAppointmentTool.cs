@@ -7,11 +7,11 @@ using BotSaaS.Api.Shared.Results;
 namespace BotSaaS.Api.Capabilities.Appointments;
 
 // The registrar_agendamento tool - owns its definition + handler, inside the Appointments capability.
-public class RegisterAppointmentTool : IChatTool
+public class CreateAppointmentTool : IChatTool
 {
     private readonly IAppointmentService _appointmentService;
 
-    public RegisterAppointmentTool(IAppointmentService appointmentService)
+    public CreateAppointmentTool(IAppointmentService appointmentService)
     {
         _appointmentService = appointmentService;
     }
@@ -31,13 +31,13 @@ public class RegisterAppointmentTool : IChatTool
         });
 
     // Parse the args the model filled in -> create the appointment -> return a message for the customer.
-    public async Task<string> Handle(Guid companyId, Guid conversationId, string argsJson)
+    public async Task<ToolOutcome> Handle(Guid companyId, Guid conversationId, string argsJson)
     {
         AppointmentArgs? args = JsonSerializer.Deserialize<AppointmentArgs>(argsJson, new JsonSerializerOptions(JsonSerializerDefaults.Web));
         
         if(args is null)
         {
-            return "Desculpe, não consegui entender os dados do agendamento. Pode repetir?";
+            return new ToolOutcome("Desculpe, não consegui entender os dados do agendamento. Pode repetir?", FinalResponse: true);
         }
 
         Result<Appointment> result = await _appointmentService.CreateAppointment(companyId, conversationId, args.Servico, args.Nome, args.Data, args.Hora);
@@ -46,16 +46,16 @@ public class RegisterAppointmentTool : IChatTool
         {
             if(result.ErrorType == ErrorType.Conflict)
             {
-                return "Esse horário não está disponível. Quer tentar outro?";
+                return new ToolOutcome("Esse horário não está disponível. Quer tentar outro?", FinalResponse: true);
             }
             else
             {
-                return "Não consegui entender a data ou hora. Pode confirmar, por favor?";
+                return new ToolOutcome("Não consegui entender a data ou hora. Pode confirmar, por favor?", FinalResponse: true);
             }
         }
         // format from the parsed ScheduledAt (source of truth), pt-BR so the weekday reads in Portuguese
         Appointment appointment = result.Value!;
         string quando = appointment.ScheduledAt.ToString("dddd, dd/MM 'às' HH:mm", new CultureInfo("pt-BR"));
-        return $"Pronto, {args.Nome}! Seu {args.Servico} ficou agendado para {quando}.";
+        return new ToolOutcome($"Pronto, {args.Nome}! Seu {args.Servico} ficou agendado para {quando}.", FinalResponse: true);
     }
 }

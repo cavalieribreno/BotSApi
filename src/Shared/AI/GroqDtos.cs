@@ -6,5 +6,5 @@ namespace BotSaaS.Api.Shared.AI;
 record GroqResponse(List<GroqChoice> Choices);
 record GroqChoice(GroqMessage Message);
 record GroqMessage(string? Content, [property: JsonPropertyName("tool_calls")] List<GroqToolCall>? ToolCalls);
-record GroqToolCall(GroqFunction Function);
+record GroqToolCall(string Id, GroqFunction Function);
 record GroqFunction(string Name, string Arguments);

@@ -1,5 +1,4 @@
 using System.Data.Common;
-using BotSaaS.Api.Shared.AI;
 using BotSaaS.Api.Shared.Database;
 
 namespace BotSaaS.Api.Core.Conversations;
@@ -44,7 +43,7 @@ public class MessageRepository : IMessageRepository
             {
                 Id = (Guid)reader["id"],
                 ConversationId = (Guid)reader["conversation_id"],
-                Role = (ChatRole)(int)reader["role"],
+                Role = (MessageRole)(int)reader["role"],
                 Content = (string)reader["content"],
                 CreatedAt = (DateTime)reader["created_at"]
             };

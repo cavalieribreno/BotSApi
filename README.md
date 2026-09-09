@@ -62,6 +62,8 @@ Decisões de design que guiam o código:
 - ✅ Integração com IA respondendo via API — dois provedores trocáveis por DI (Gemini e Groq/Llama)
 - ✅ Conversas com histórico persistido no banco (memória por cliente) — testado e2e
 - ✅ Extração de ação via **function calling** — o modelo extrai um `Agendamento` estruturado da conversa e **grava no banco** (testado e2e)
+- ✅ **Conversa multi-turno com tools** — o bot chama uma ferramenta, recebe o resultado e responde com base nele; a confirmação de agendamento é **determinística** (data/hora montadas em código, não pelo modelo), enquanto consultas são fraseadas pelo modelo
+- ✅ **Autoatendimento do cliente** — o cliente pergunta pelo chat quais horários tem marcados e o bot responde com os seus agendamentos ativos (`consultar_agendamentos`), testado e2e
 - ✅ Visão do dono — `GET /api/appointments` lista os agendamentos da empresa (tenant do JWT), testado e2e
 - ✅ **Painel do dono em Angular** — login + tabela de agendamentos + **gestão de status** (confirmar/concluir/cancelar) + **ver a conversa** que gerou cada agendamento, testado e2e
 - ✅ **Canal de mensagens real (Telegram)** — bot por *long polling* roteando cada mensagem pelo mesmo `ConversationService` da API; testado e2e (conversa real no Telegram → agendamento no painel)
@@ -122,8 +124,8 @@ src/
 │   ├── Companies/     os tenants (empresas clientes)
 │   └── Conversations/ conversa + mensagens + roteador genérico de tools (IChatTool)
 ├── Capabilities/     ações transacionais reusáveis
-│   └── Appointments/  agendamentos (Appointment + service + repo + Tools/RegisterAppointmentTool
-│                      + IAvailabilityPolicy/GenericAvailabilityPolicy — anti-double-booking)
+│   └── Appointments/  agendamentos (Appointment + service + repo + Tools/{CreateAppointmentTool,
+│                      GetAppointmentsTool} + IAvailabilityPolicy/GenericAvailabilityPolicy — anti-double-booking)
 ├── Modules/          nichos/verticais
 │   └── Barber/        regras do nicho — BarberAvailabilityPolicy (disponibilidade/anti-double-booking)
 └── Shared/

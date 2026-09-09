@@ -58,6 +58,41 @@ public class AppointmentRepository : IAppointmentRepository
         return appointments;
     }
 
+    // All appointments of one customer (company + phone), soonest-first. Joins conversations because the
+    // phone lives there, not on the appointment - survives conversation rotation (same phone, new conversation).
+    public async Task<List<Appointment>> GetAppointmentsByCustomer(Guid companyId, string customerPhone)
+    {
+        List<Appointment> appointments = new List<Appointment>();
+
+        using DbCommand command = _dbSession.Connection.CreateCommand();
+        command.Transaction = _dbSession.Transaction;
+        command.CommandText = @"SELECT ap.id, ap.company_id, ap.conversation_id, ap.service_name, ap.customer_name, ap.scheduled_at, ap.status, ap.created_at
+                                FROM appointments ap
+                                JOIN conversations cv ON ap.conversation_id = cv.id
+                                WHERE ap.company_id = @company_id AND cv.customer_phone = @customer_phone
+                                ORDER BY ap.scheduled_at";
+        command.AddParameter("@company_id", companyId.ToString());
+        command.AddParameter("@customer_phone", customerPhone);
+
+        using DbDataReader reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            Appointment appointment = new Appointment
+            {
+                Id = (Guid)reader["id"],
+                CompanyId = (Guid)reader["company_id"],
+                ConversationId = (Guid)reader["conversation_id"],
+                ServiceName = (string)reader["service_name"],
+                CustomerName = (string)reader["customer_name"],
+                ScheduledAt = (DateTime)reader["scheduled_at"],
+                Status = (AppointmentStatus)(int)reader["status"],
+                CreatedAt = (DateTime)reader["created_at"]
+            };
+            appointments.Add(appointment);
+        }
+        return appointments;
+    }
+
     // Updates a company's appointment status. Returns rows affected (0 = not found / not this company).
     public async Task<int> UpdateAppointmentStatus(Guid appointmentId, Guid companyId, AppointmentStatus status)
     {

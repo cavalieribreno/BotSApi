@@ -7,5 +7,6 @@ public interface IAppointmentService
 {
     Task<Result<Appointment>> CreateAppointment(Guid companyId, Guid conversationId, string serviceName, string customerName, string data, string hora);
     Task<List<Appointment>> GetAppointments(Guid companyId);
+    Task<List<Appointment>> GetAppointmentsByCustomer(Guid companyId, string customerPhone);
     Task<Result<bool>> UpdateAppointmentStatus(Guid appointmentId, Guid companyId, AppointmentStatus status);
 }

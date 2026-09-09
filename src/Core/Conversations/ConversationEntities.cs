@@ -1,5 +1,3 @@
-using BotSaaS.Api.Shared.AI;
-
 namespace BotSaaS.Api.Core.Conversations;
 
 // Conversation: a customer's thread with one company (tenant-scoped by company + phone).
@@ -11,12 +9,15 @@ public class Conversation
     public DateTime CreatedAt { get; set; }
 }
 
-// Message: one turn in a conversation. Role reuses ChatRole (User/Assistant).
+// Who sent a persisted message. Persistence discriminator (stored as INT in messages.role) - not an AI concept.
+public enum MessageRole { User, Assistant }
+
+// Message: one turn in a conversation.
 public class Message
 {
     public Guid Id { get; set; }
     public Guid ConversationId { get; set; }
-    public ChatRole Role { get ; set; }
+    public MessageRole Role { get ; set; }
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 }

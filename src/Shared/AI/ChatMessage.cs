@@ -1,7 +1,5 @@
 namespace BotSaaS.Api.Shared.AI;
 
-public enum ChatRole { User, Assistant }; // who
-
 public abstract record ChatMessage;
 
 public record UserMessage (string Content) : ChatMessage;

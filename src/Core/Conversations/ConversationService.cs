@@ -58,7 +58,7 @@ public class ConversationService : IConversationService
             {
                 Id = Guid.NewGuid(),
                 ConversationId = conversationId,
-                Role = ChatRole.User,
+                Role = MessageRole.User,
                 Content = messageText,
                 CreatedAt = DateTime.UtcNow
             };
@@ -69,7 +69,7 @@ public class ConversationService : IConversationService
 
             foreach(Message findMessage in messages)
             {
-                if(findMessage.Role == ChatRole.User)
+                if(findMessage.Role == MessageRole.User)
                 {
                     chatHistory.Add(new UserMessage(findMessage.Content));
                 }
@@ -133,7 +133,7 @@ public class ConversationService : IConversationService
                     }
                     else
                     {
-                        ToolOutcome toolOutcome = await chosen.Handle(companyId, conversationId, toolCall.ArgumentsJson);
+                        ToolOutcome toolOutcome = await chosen.Handle(new WhoContext(companyId, conversationId, customerPhone), toolCall.ArgumentsJson);
                         if (toolOutcome.FinalResponse)
                         {
                             finalText = toolOutcome.Content;
@@ -170,7 +170,7 @@ public class ConversationService : IConversationService
             {
                 Id = Guid.NewGuid(),
                 ConversationId = conversationId,
-                Role = ChatRole.Assistant,
+                Role = MessageRole.Assistant,
                 Content = response,
                 CreatedAt = DateTime.UtcNow
             };

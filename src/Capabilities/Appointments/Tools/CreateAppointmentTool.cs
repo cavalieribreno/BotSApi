@@ -31,7 +31,7 @@ public class CreateAppointmentTool : IChatTool
         });
 
     // Parse the args the model filled in -> create the appointment -> return a message for the customer.
-    public async Task<ToolOutcome> Handle(Guid companyId, Guid conversationId, string argsJson)
+    public async Task<ToolOutcome> Handle(WhoContext whoContext, string argsJson)
     {
         AppointmentArgs? args = JsonSerializer.Deserialize<AppointmentArgs>(argsJson, new JsonSerializerOptions(JsonSerializerDefaults.Web));
         
@@ -40,7 +40,7 @@ public class CreateAppointmentTool : IChatTool
             return new ToolOutcome("Desculpe, não consegui entender os dados do agendamento. Pode repetir?", FinalResponse: true);
         }
 
-        Result<Appointment> result = await _appointmentService.CreateAppointment(companyId, conversationId, args.Servico, args.Nome, args.Data, args.Hora);
+        Result<Appointment> result = await _appointmentService.CreateAppointment(whoContext.CompanyId, whoContext.ConversationId, args.Servico, args.Nome, args.Data, args.Hora);
 
         if (!result.IsSuccess)
         {

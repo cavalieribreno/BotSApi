@@ -79,6 +79,16 @@ public class AppointmentService : IAppointmentService
         return await _appointmentRepository.GetAppointmentsByCompany(companyId);
     }
 
+    // Customer self-service: all appointments of one customer (company + phone). Opens its own connection.
+    public async Task<List<Appointment>> GetAppointmentsByCustomer(Guid companyId, string customerPhone)
+    {
+        using DbConnection connection = _databaseConnection.CreateConnection();
+        _dbSession.Connection = connection;
+        await connection.OpenAsync();
+
+        return await _appointmentRepository.GetAppointmentsByCustomer(companyId, customerPhone);
+    }
+
     // Owner action: change an appointment's status (tenant-scoped). 0 rows updated -> not found for this company.
     public async Task<Result<bool>> UpdateAppointmentStatus(Guid appointmentId, Guid companyId, AppointmentStatus status)
     {

@@ -48,13 +48,13 @@ public class CreateAppointmentTool : IChatTool
 
         if (!result.IsSuccess)
         {
-            if(result.ErrorType == ErrorType.Conflict)
+            if (result.ErrorType == ErrorType.Conflict)
             {
                 return new ToolOutcome("Esse horário não está disponível. Quer tentar outro?", FinalResponse: true);
             }
             else
             {
-                return new ToolOutcome("Não consegui entender a data ou hora. Pode confirmar, por favor?", FinalResponse: true);
+                return new ToolOutcome(result.Error ?? "Não foi possível concluir o agendamento.", FinalResponse: true);
             }
         }
         // format from the parsed ScheduledAt (source of truth), pt-BR so the weekday reads in Portuguese

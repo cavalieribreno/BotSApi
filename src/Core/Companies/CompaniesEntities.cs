@@ -14,3 +14,13 @@ public class Company
     public Segment Segment { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+// Operating hours per day of week for a company.
+public class BusinessHours
+{
+    public Guid CompanyId { get; set; }
+    public DayOfWeek DayOfWeek { get; set; } // 0 = Sunday ... 6 = Saturday (native C# enum)
+    public TimeSpan OpensAt { get; set; }
+    public TimeSpan ClosesAt { get; set; }
+    public bool IsClosed { get; set; }
+}

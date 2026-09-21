@@ -32,10 +32,33 @@ public class AppointmentService : IAppointmentService
             return Result<Appointment>.Failure("Data ou hora inválida");
         }
         
+        // 1. Cannot book in the past
+        if (scheduledAt < DateTime.Now)
+        {
+            return Result<Appointment>.Failure("Não é possível agendar em datas ou horários que já passaram.");
+        }
+
         using DbConnection connection = _databaseConnection.CreateConnection();
         _dbSession.Connection = connection;
         await connection.OpenAsync();
 
+        // 2. Validate operating hours for the requested day of week
+        BusinessHours? hours = await _companiesRepository.GetBusinessHours(companyId, scheduledAt.DayOfWeek);
+        if (hours is not null)
+        {
+            if (hours.IsClosed)
+            {
+                return Result<Appointment>.Failure("Não funcionamos neste dia. Por favor, escolha outra data.");
+            }
+
+            TimeSpan requestedTime = scheduledAt.TimeOfDay;
+            if (requestedTime < hours.OpensAt || requestedTime >= hours.ClosesAt)
+            {
+                string opens = hours.OpensAt.ToString(@"hh\:mm");
+                string closes = hours.ClosesAt.ToString(@"hh\:mm");
+                return Result<Appointment>.Failure($"Horário fora do expediente. Atendemos das {opens} às {closes}.");
+            }
+        }
         using DbTransaction transaction = await connection.BeginTransactionAsync();
         _dbSession.Transaction = transaction;
 

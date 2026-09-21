@@ -70,7 +70,8 @@ Decisões de design que guiam o código:
 - ✅ **Regra de disponibilidade (anti-double-booking)** — dois clientes não fecham o mesmo horário; a segunda tentativa é recusada na gravação, testado e2e
 - ✅ **Lembrete automático de agendamento** — `ReminderBackgroundService` varre a cada 1 minuto agendamentos nas próximas 2 horas e envia lembrete proativo ao cliente via Telegram; marca `reminded_at` no banco para nunca repetir; índice composto `(reminded_at, scheduled_at, status)` garante performance
 - ✅ **Canal de envio neutro (`IChannelSender`)** — contrato em `Channels/Interfaces` implementado por `TelegramChannelSender` (Typed HttpClient via `IHttpClientFactory`); trocar para WhatsApp = nova implementação, zero mudança no lembrete
-- 🔜 Horário de funcionamento, webhook de WhatsApp, cobrança
+- ✅ **Horário de funcionamento básico** — tabela `business_hours` por dia da semana (`opens_at`, `closes_at`, `is_closed`); validação no agendamento bloqueia datas passadas, dias fechados e horários fora de expediente; endpoints REST para consulta e edição
+- 🔜 Interface de Horários no Painel (Angular), webhook de WhatsApp, cobrança
 
 ## Endpoints
 
@@ -83,6 +84,8 @@ Decisões de design que guiam o código:
 | `GET`  | `/api/appointments` | Lista os agendamentos da empresa do requisitante (requer Bearer; a "visão do dono") |
 | `PATCH` | `/api/appointments/{id}/status` | Atualiza o status de um agendamento (requer Bearer; tenant-scoped) |
 | `GET`  | `/api/conversations/{id}/messages` | Mensagens de uma conversa (requer Bearer; tenant-scoped) — o chat por trás de um agendamento |
+| `GET`  | `/api/business-hours` | Lista os horários de funcionamento da semana da empresa (requer Bearer; tenant-scoped) |
+| `PUT`  | `/api/business-hours` | Atualiza a grade semanal de horários de funcionamento (requer Bearer; tenant-scoped) |
 
 > O **canal de Telegram** roda como dois serviços em background: `TelegramPollingService` (escuta
 > mensagens do cliente, *long polling*) e `ReminderBackgroundService` (envia lembretes proativos via
@@ -99,7 +102,7 @@ Decisões de design que guiam o código:
    `GROQ_API_KEY/MODEL`) e `SYSTEM_PROMPT`. O provedor ativo é escolhido na DI (`Program.cs`).
    - **Opcional (canal Telegram):** `TELEGRAM_BOT_TOKEN` (do @BotFather) e `TELEGRAM_TEST_COMPANY_ID`
      (a empresa que recebe os agendamentos do bot). Sem essas vars, o canal fica desligado e o resto roda normal.
-3. Crie o banco e as tabelas `companies`, `users`, `conversations`, `messages` e `appointments` no MySQL.
+3. Crie o banco e as tabelas `companies`, `users`, `conversations`, `messages`, `appointments` e `business_hours` no MySQL.
 4. Rode:
    ```bash
    dotnet run
@@ -125,7 +128,7 @@ src/
 ├── Core/             kernel universal
 │   ├── Auth/          registro e login (orquestra o cadastro)
 │   ├── Users/         entidade User + gestão
-│   ├── Companies/     os tenants (empresas clientes)
+│   ├── Companies/     os tenants (empresas clientes) + horários de funcionamento (BusinessHours)
 │   └── Conversations/ conversa + mensagens + roteador genérico de tools (IChatTool)
 ├── Capabilities/     ações transacionais reusáveis
 │   └── Appointments/  agendamentos (Appointment + service + repo + Tools/{CreateAppointmentTool,

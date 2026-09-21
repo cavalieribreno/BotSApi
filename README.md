@@ -4,8 +4,8 @@ Plataforma SaaS de atendimento por IA por chat (WhatsApp/Telegram) para pequenos
 **transacional**: o cliente final faz um **pedido** ou **marca um horário** pela conversa,
 e isso vira um **registro estruturado** que o dono do negócio acompanha num painel.
 
-> Projeto de portfólio em desenvolvimento — foco em arquitetura limpa e integração de IA
-> ponta a ponta. Construído incrementalmente, com cada decisão documentada.
+> Produto SaaS em desenvolvimento — arquitetura limpa e integração de IA ponta a ponta,
+> construído incrementalmente, com cada decisão documentada.
 
 ![Diagrama de arquitetura — do chat à ação](docs/arquitetura.png)
 
@@ -68,7 +68,9 @@ Decisões de design que guiam o código:
 - ✅ **Painel do dono em Angular** — login + tabela de agendamentos + **gestão de status** (confirmar/concluir/cancelar) + **ver a conversa** que gerou cada agendamento, testado e2e
 - ✅ **Canal de mensagens real (Telegram)** — bot por *long polling* roteando cada mensagem pelo mesmo `ConversationService` da API; testado e2e (conversa real no Telegram → agendamento no painel)
 - ✅ **Regra de disponibilidade (anti-double-booking)** — dois clientes não fecham o mesmo horário; a segunda tentativa é recusada na gravação, testado e2e
-- 🔜 Webhook de WhatsApp, cobrança
+- ✅ **Lembrete automático de agendamento** — `ReminderBackgroundService` varre a cada 1 minuto agendamentos nas próximas 2 horas e envia lembrete proativo ao cliente via Telegram; marca `reminded_at` no banco para nunca repetir; índice composto `(reminded_at, scheduled_at, status)` garante performance
+- ✅ **Canal de envio neutro (`IChannelSender`)** — contrato em `Channels/Interfaces` implementado por `TelegramChannelSender` (Typed HttpClient via `IHttpClientFactory`); trocar para WhatsApp = nova implementação, zero mudança no lembrete
+- 🔜 Horário de funcionamento, webhook de WhatsApp, cobrança
 
 ## Endpoints
 
@@ -82,8 +84,9 @@ Decisões de design que guiam o código:
 | `PATCH` | `/api/appointments/{id}/status` | Atualiza o status de um agendamento (requer Bearer; tenant-scoped) |
 | `GET`  | `/api/conversations/{id}/messages` | Mensagens de uma conversa (requer Bearer; tenant-scoped) — o chat por trás de um agendamento |
 
-> O **canal de Telegram** não é um endpoint: roda como serviço em background (*long polling*) e
-> injeta cada mensagem no mesmo fluxo do `/api/conversations`, resolvendo o tenant por configuração.
+> O **canal de Telegram** roda como dois serviços em background: `TelegramPollingService` (escuta
+> mensagens do cliente, *long polling*) e `ReminderBackgroundService` (envia lembretes proativos via
+> `TelegramChannelSender`). Ambos injetam no mesmo fluxo de dados.
 > Em produção, a entrada será o **webhook** (o `companyId` virá do canal, não de um token).
 
 ## Como rodar
@@ -117,7 +120,8 @@ Abre em `http://localhost:4200`. Precisa do backend no ar (CORS já libera `loca
 ```
 src/
 ├── Channels/
-│   └── Telegram/     canal de teste (long polling) → injeta no ConversationService
+│   ├── Interfaces/   contrato neutro de envio (IChannelSender)
+│   └── Telegram/     canal de teste (long polling) + envio proativo (TelegramChannelSender)
 ├── Core/             kernel universal
 │   ├── Auth/          registro e login (orquestra o cadastro)
 │   ├── Users/         entidade User + gestão
@@ -125,9 +129,10 @@ src/
 │   └── Conversations/ conversa + mensagens + roteador genérico de tools (IChatTool)
 ├── Capabilities/     ações transacionais reusáveis
 │   └── Appointments/  agendamentos (Appointment + service + repo + Tools/{CreateAppointmentTool,
-│                      GetAppointmentsTool} + IAvailabilityPolicy/GenericAvailabilityPolicy — anti-double-booking)
+│                      GetAppointmentsTool} + IAvailabilityPolicy/GenericAvailabilityPolicy
+│                      + ReminderBackgroundService — lembrete proativo)
 ├── Modules/          nichos/verticais
-│   └── Barber/        regras do nicho — BarberAvailabilityPolicy (disponibilidade/anti-double-booking)
+│   └── Barber/        regras específicas do nicho (futuras policies por segmento)
 └── Shared/
     ├── Results/     Result Pattern
     ├── Security/    hash de senha + JWT

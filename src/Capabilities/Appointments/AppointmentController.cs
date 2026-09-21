@@ -50,7 +50,7 @@ public class AppointmentController : ControllerBase
             return BadRequest(new { error = "Status inválido." });
         }
 
-        Result<bool> result = await _appointmentService.UpdateAppointmentStatus(companyGuid, id, parsedStatus);
+        Result<bool> result = await _appointmentService.UpdateAppointmentStatus(id, companyGuid, parsedStatus);
         if (!result.IsSuccess)
         {
             return NotFound(new { error = result.Error });

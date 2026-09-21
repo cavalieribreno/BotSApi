@@ -36,7 +36,7 @@ public class AppointmentRepository : IAppointmentRepository
 
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
-        command.CommandText = "SELECT id, company_id, conversation_id, service_name, customer_name, scheduled_at, status, created_at FROM appointments WHERE company_id = @company_id ORDER BY scheduled_at";
+        command.CommandText = "SELECT id, company_id, conversation_id, service_name, customer_name, scheduled_at, status, reminded_at, created_at FROM appointments WHERE company_id = @company_id ORDER BY scheduled_at";
         command.AddParameter("@company_id", companyId.ToString());
 
         using DbDataReader reader = await command.ExecuteReaderAsync();
@@ -51,6 +51,7 @@ public class AppointmentRepository : IAppointmentRepository
                 CustomerName = (string)reader["customer_name"],
                 ScheduledAt = (DateTime)reader["scheduled_at"],
                 Status = (AppointmentStatus)(int)reader["status"],
+                RemindedAt = reader["reminded_at"] == DBNull.Value ? null : (DateTime?)reader["reminded_at"],
                 CreatedAt = (DateTime)reader["created_at"]
             };
             appointments.Add(appointment);
@@ -66,7 +67,7 @@ public class AppointmentRepository : IAppointmentRepository
 
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
-        command.CommandText = @"SELECT ap.id, ap.company_id, ap.conversation_id, ap.service_name, ap.customer_name, ap.scheduled_at, ap.status, ap.created_at
+        command.CommandText = @"SELECT ap.id, ap.company_id, ap.conversation_id, ap.service_name, ap.customer_name, ap.scheduled_at, ap.status, ap.reminded_at, ap.created_at
                                 FROM appointments ap
                                 JOIN conversations cv ON ap.conversation_id = cv.id
                                 WHERE ap.company_id = @company_id AND cv.customer_phone = @customer_phone
@@ -86,6 +87,7 @@ public class AppointmentRepository : IAppointmentRepository
                 CustomerName = (string)reader["customer_name"],
                 ScheduledAt = (DateTime)reader["scheduled_at"],
                 Status = (AppointmentStatus)(int)reader["status"],
+                RemindedAt = reader["reminded_at"] == DBNull.Value ? null : (DateTime?)reader["reminded_at"],
                 CreatedAt = (DateTime)reader["created_at"]
             };
             appointments.Add(appointment);
@@ -120,5 +122,51 @@ public class AppointmentRepository : IAppointmentRepository
         command.AddParameter("@confirmed", (int)AppointmentStatus.Confirmed);
 
         return Convert.ToBoolean(await command.ExecuteScalarAsync());
+    }
+
+    // Fetches upcoming appointments needing a reminder within [windowStart, windowEnd] that haven't been reminded yet.
+    public async Task<List<UpcomingReminder>> GetPendingReminders(DateTime windowStart, DateTime windowEnd)
+    {
+        List<UpcomingReminder> reminders = new List<UpcomingReminder>();
+
+        using DbCommand command = _dbSession.Connection.CreateCommand();
+        command.Transaction = _dbSession.Transaction;
+        command.CommandText = @"SELECT ap.id, ap.company_id, ap.customer_name, ap.service_name, ap.scheduled_at, cv.customer_phone
+                                FROM appointments ap
+                                JOIN conversations cv ON ap.conversation_id = cv.id
+                                WHERE ap.reminded_at IS NULL
+                                  AND ap.status IN (@pending, @confirmed)
+                                  AND ap.scheduled_at BETWEEN @windowStart AND @windowEnd
+                                ORDER BY ap.scheduled_at";
+        command.AddParameter("@pending", (int)AppointmentStatus.Pending);
+        command.AddParameter("@confirmed", (int)AppointmentStatus.Confirmed);
+        command.AddParameter("@windowStart", windowStart);
+        command.AddParameter("@windowEnd", windowEnd);
+
+        using DbDataReader reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            reminders.Add(new UpcomingReminder(
+                (Guid)reader["id"],
+                (Guid)reader["company_id"],
+                (string)reader["customer_name"],
+                (string)reader["service_name"],
+                (DateTime)reader["scheduled_at"],
+                (string)reader["customer_phone"]
+            ));
+        }
+        return reminders;
+    }
+
+    // Records the timestamp when the reminder was sent to prevent duplicate messages.
+    public async Task MarkReminded(Guid appointmentId, DateTime remindedAt)
+    {
+        using DbCommand command = _dbSession.Connection.CreateCommand();
+        command.Transaction = _dbSession.Transaction;
+        command.CommandText = "UPDATE appointments SET reminded_at = @reminded_at WHERE id = @id";
+        command.AddParameter("@reminded_at", remindedAt);
+        command.AddParameter("@id", appointmentId.ToString());
+
+        await command.ExecuteNonQueryAsync();
     }
 }

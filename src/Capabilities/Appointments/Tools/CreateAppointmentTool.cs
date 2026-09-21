@@ -35,7 +35,11 @@ public class CreateAppointmentTool : IChatTool
     {
         AppointmentArgs? args = JsonSerializer.Deserialize<AppointmentArgs>(argsJson, new JsonSerializerOptions(JsonSerializerDefaults.Web));
         
-        if(args is null)
+        if (args is null ||
+            string.IsNullOrWhiteSpace(args.Servico) ||
+            string.IsNullOrWhiteSpace(args.Nome) ||
+            string.IsNullOrWhiteSpace(args.Data) ||
+            string.IsNullOrWhiteSpace(args.Hora))
         {
             return new ToolOutcome("Desculpe, não consegui entender os dados do agendamento. Pode repetir?", FinalResponse: true);
         }

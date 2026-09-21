@@ -19,5 +19,6 @@ public class Appointment
     public string CustomerName { get; set; } = string.Empty;
     public DateTime ScheduledAt { get; set; }    // the appointment moment
     public AppointmentStatus Status { get; set; } // defaults to Pending (0)
+    public DateTime? RemindedAt { get; set; }    // when the reminder was sent (null if not yet)
     public DateTime CreatedAt { get; set; }      // when booked (app-filled)
 }

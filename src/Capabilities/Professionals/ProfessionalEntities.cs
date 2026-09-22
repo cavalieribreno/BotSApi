@@ -1,6 +1,10 @@
+using System.Text.Json.Serialization;
+
 namespace BotSaaS.Api.Capabilities.Professionals;
 
 // Lifecycle status of a professional. Persisted as INT in MySQL.
+// Serialized as string names ("Active", "Inactive", "OnVacation") over HTTP JSON.
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ProfessionalStatus
 {
     Inactive = 0,

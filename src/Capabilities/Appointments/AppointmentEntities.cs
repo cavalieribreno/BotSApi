@@ -1,6 +1,10 @@
+using System.Text.Json.Serialization;
+
 namespace BotSaaS.Api.Capabilities.Appointments;
 
 // Appointment lifecycle. Explicit values -- persisted as INT, never reorder.
+// Serialized as string names ("Pending", "Confirmed", etc.) over HTTP JSON.
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum AppointmentStatus
 {
     Pending = 0,

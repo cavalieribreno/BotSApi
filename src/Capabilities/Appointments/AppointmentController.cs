@@ -36,7 +36,7 @@ public class AppointmentController : ControllerBase
     }
 
     [HttpPatch("{id}/status")]
-    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] string status)
+    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] AppointmentStatus status)
     {
         string? companyId = User.FindFirstValue("companyId");
         if (!Guid.TryParse(companyId, out Guid companyGuid))
@@ -44,13 +44,7 @@ public class AppointmentController : ControllerBase
             return Unauthorized(new { error = "Empresa inválida" });
         }
 
-        // enum name -> AppointmentStatus. IsDefined blocks bogus/out-of-range values (Enum.TryParse accepts any int).
-        if (!Enum.TryParse<AppointmentStatus>(status, ignoreCase: true, out AppointmentStatus parsedStatus) || !Enum.IsDefined(parsedStatus))
-        {
-            return BadRequest(new { error = "Status inválido." });
-        }
-
-        Result<bool> result = await _appointmentService.UpdateAppointmentStatus(id, companyGuid, parsedStatus);
+        Result<bool> result = await _appointmentService.UpdateAppointmentStatus(id, companyGuid, status);
         if (!result.IsSuccess)
         {
             return NotFound(new { error = result.Error });

@@ -15,6 +15,8 @@ public class Appointment
     public Guid Id { get; set; }
     public Guid CompanyId { get; set; }          // tenant
     public Guid ConversationId { get; set; }     // which conversation produced it
+    public Guid ProfessionalId { get; set; }     // assigned professional
+    public string ProfessionalName { get; set; } = string.Empty; // populated via JOIN with professionals
     public string ServiceName { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
     public DateTime ScheduledAt { get; set; }    // the appointment moment

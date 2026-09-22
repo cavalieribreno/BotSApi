@@ -29,7 +29,7 @@ public class AppointmentController : ControllerBase
         foreach(Appointment appointment in appointments)
         {
             response.Add(new AppointmentResponse(
-                appointment.Id, appointment.CompanyId, appointment.ConversationId, appointment.ServiceName, appointment.CustomerName, appointment.ScheduledAt, appointment.Status.ToString(), appointment.CreatedAt
+                appointment.Id, appointment.CompanyId, appointment.ConversationId, appointment.ProfessionalId, appointment.ProfessionalName, appointment.ServiceName, appointment.CustomerName, appointment.ScheduledAt, appointment.Status.ToString(), appointment.CreatedAt
             ));
         }
         return Ok(response);

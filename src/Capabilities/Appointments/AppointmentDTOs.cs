@@ -5,6 +5,8 @@ public record AppointmentResponse(
     Guid Id,
     Guid CompanyId,
     Guid ConversationId,
+    Guid ProfessionalId,
+    string ProfessionalName,
     string ServiceName,
     string CustomerName,
     DateTime ScheduledAt,
@@ -12,8 +14,8 @@ public record AppointmentResponse(
     DateTime CreatedAt);
 
 // Deserialized args of the registrar_agendamento tool call (the model's JSON, mapped to the domain).
-// Fields in PT on purpose - they're the JSON keys the model fills (servico/data/hora/nome).
-public record AppointmentArgs(string Servico, string Data, string Hora, string Nome);
+// Fields in PT on purpose - they're the JSON keys the model fills (servico/data/hora/nome/profissional).
+public record AppointmentArgs(string Servico, string Data, string Hora, string Nome, string Profissional);
 
 // DTO carrying appointment details + contact phone from JOIN with conversations, used by the reminder worker.
 public record UpcomingReminder(

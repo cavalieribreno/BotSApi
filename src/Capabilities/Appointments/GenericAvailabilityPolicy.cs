@@ -12,8 +12,8 @@ public class GenericAvailabilityPolicy : IAvailabilityPolicy
 
     // Generic = exact-minute match: start == end == scheduledAt (SlotTaken uses BETWEEN, inclusive).
     // Race-safe ONLY when the caller holds the tenant lock (LockCompany) inside the same transaction.
-    public async Task<bool> IsSlotFree(Guid companyId, DateTime scheduledAt)
+    public async Task<bool> IsSlotFree(Guid companyId, Guid professionalId, DateTime scheduledAt)
     {
-        return !await _appointmentRepository.SlotTaken(companyId, scheduledAt, scheduledAt); // same hour, not window
+        return !await _appointmentRepository.SlotTaken(companyId, professionalId, scheduledAt, scheduledAt); // same hour, not window
     }
 }

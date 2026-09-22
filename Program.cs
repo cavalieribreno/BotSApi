@@ -5,6 +5,7 @@ using BotSaaS.Api.Core.Auth;
 using BotSaaS.Api.Core.Companies;
 using BotSaaS.Api.Core.Conversations;
 using BotSaaS.Api.Capabilities.Appointments;
+using BotSaaS.Api.Capabilities.Professionals;
 using BotSaaS.Api.Core.Users;
 using BotSaaS.Api.Shared.AI;
 using BotSaaS.Api.Shared.Database;
@@ -33,9 +34,12 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IProfessionalRepository, ProfessionalRepository>();
+builder.Services.AddScoped<IProfessionalService, ProfessionalService>();
 builder.Services.AddScoped<IAvailabilityPolicy, GenericAvailabilityPolicy>();
 builder.Services.AddScoped<IChatTool, CreateAppointmentTool>();
 builder.Services.AddScoped<IChatTool, GetAppointmentsTool>();
+builder.Services.AddScoped<IChatTool, GetProfessionalsTool>();
 
 // Outbound channel sender via Typed HttpClient
 builder.Services.AddHttpClient<IChannelSender, TelegramChannelSender>();

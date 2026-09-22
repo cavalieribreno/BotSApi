@@ -16,10 +16,11 @@ public class AppointmentRepository : IAppointmentRepository
     {
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
-        command.CommandText = "INSERT INTO appointments (id, company_id, conversation_id, service_name, customer_name, scheduled_at, status, created_at) VALUES (@id, @company_id, @conversation_id, @service_name, @customer_name, @scheduled_at, @status, @created_at)";
+        command.CommandText = "INSERT INTO appointments (id, company_id, conversation_id, professional_id, service_name, customer_name, scheduled_at, status, created_at) VALUES (@id, @company_id, @conversation_id, @professional_id, @service_name, @customer_name, @scheduled_at, @status, @created_at)";
         command.AddParameter("@id", appointment.Id.ToString());
         command.AddParameter("@company_id", appointment.CompanyId.ToString());       // FK, guid
         command.AddParameter("@conversation_id", appointment.ConversationId.ToString()); // FK, guid
+        command.AddParameter("@professional_id", appointment.ProfessionalId.ToString()); // FK, guid
         command.AddParameter("@service_name", appointment.ServiceName);
         command.AddParameter("@customer_name", appointment.CustomerName);
         command.AddParameter("@scheduled_at", appointment.ScheduledAt);
@@ -36,7 +37,12 @@ public class AppointmentRepository : IAppointmentRepository
 
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
-        command.CommandText = "SELECT id, company_id, conversation_id, service_name, customer_name, scheduled_at, status, reminded_at, created_at FROM appointments WHERE company_id = @company_id ORDER BY scheduled_at";
+        command.CommandText = @"SELECT ap.id, ap.company_id, ap.conversation_id, ap.professional_id, pr.name AS professional_name, 
+                                       ap.service_name, ap.customer_name, ap.scheduled_at, ap.status, ap.reminded_at, ap.created_at 
+                                FROM appointments ap
+                                INNER JOIN professionals pr ON ap.professional_id = pr.id
+                                WHERE ap.company_id = @company_id 
+                                ORDER BY ap.scheduled_at";
         command.AddParameter("@company_id", companyId.ToString());
 
         using DbDataReader reader = await command.ExecuteReaderAsync();
@@ -47,6 +53,8 @@ public class AppointmentRepository : IAppointmentRepository
                 Id = (Guid)reader["id"],
                 CompanyId = (Guid)reader["company_id"],
                 ConversationId = (Guid)reader["conversation_id"],
+                ProfessionalId = (Guid)reader["professional_id"],
+                ProfessionalName = (string)reader["professional_name"],
                 ServiceName = (string)reader["service_name"],
                 CustomerName = (string)reader["customer_name"],
                 ScheduledAt = (DateTime)reader["scheduled_at"],
@@ -67,9 +75,11 @@ public class AppointmentRepository : IAppointmentRepository
 
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
-        command.CommandText = @"SELECT ap.id, ap.company_id, ap.conversation_id, ap.service_name, ap.customer_name, ap.scheduled_at, ap.status, ap.reminded_at, ap.created_at
+        command.CommandText = @"SELECT ap.id, ap.company_id, ap.conversation_id, ap.professional_id, pr.name AS professional_name, 
+                                       ap.service_name, ap.customer_name, ap.scheduled_at, ap.status, ap.reminded_at, ap.created_at
                                 FROM appointments ap
                                 JOIN conversations cv ON ap.conversation_id = cv.id
+                                INNER JOIN professionals pr ON ap.professional_id = pr.id
                                 WHERE ap.company_id = @company_id AND cv.customer_phone = @customer_phone
                                 ORDER BY ap.scheduled_at";
         command.AddParameter("@company_id", companyId.ToString());
@@ -83,6 +93,8 @@ public class AppointmentRepository : IAppointmentRepository
                 Id = (Guid)reader["id"],
                 CompanyId = (Guid)reader["company_id"],
                 ConversationId = (Guid)reader["conversation_id"],
+                ProfessionalId = (Guid)reader["professional_id"],
+                ProfessionalName = (string)reader["professional_name"],
                 ServiceName = (string)reader["service_name"],
                 CustomerName = (string)reader["customer_name"],
                 ScheduledAt = (DateTime)reader["scheduled_at"],
@@ -110,12 +122,13 @@ public class AppointmentRepository : IAppointmentRepository
 
     // Dumb existence check: is any active appointment within [start, end] (BETWEEN, inclusive both ends)?
     // The policy decides the window's width (exact minute vs overlap range); the repo only asks the DB.
-    public async Task<bool> SlotTaken(Guid companyId, DateTime start, DateTime end)
+    public async Task<bool> SlotTaken(Guid companyId, Guid professionalId, DateTime start, DateTime end)
     {
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
-        command.CommandText = "SELECT EXISTS (SELECT 1 FROM appointments WHERE company_id = @company_id AND scheduled_at BETWEEN @start AND @end AND status IN (@pending, @confirmed))";
+        command.CommandText = "SELECT EXISTS (SELECT 1 FROM appointments WHERE company_id = @company_id AND professional_id = @professional_id AND scheduled_at BETWEEN @start AND @end AND status IN (@pending, @confirmed))";
         command.AddParameter("@company_id", companyId.ToString());
+        command.AddParameter("@professional_id", professionalId.ToString());
         command.AddParameter("@start", start);
         command.AddParameter("@end", end);
         command.AddParameter("@pending", (int)AppointmentStatus.Pending);

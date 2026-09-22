@@ -24,7 +24,7 @@ public class AppointmentService : IAppointmentService
     }
 
     // Builds a valid Appointment from primitives (parses "yyyy-MM-dd" + "HH:mm" into ScheduledAt, business-local naive time) and persists it.
-    public async Task<Result<Appointment>> CreateAppointment(Guid companyId, Guid conversationId, string serviceName, string customerName, string data, string hora)
+    public async Task<Result<Appointment>> CreateAppointment(Guid companyId, Guid conversationId, Guid professionalId, string serviceName, string customerName, string data, string hora)
     {
         // strict parse - if the model sent a bad date/time, fail cleanly instead of crashing
         if (!DateTime.TryParseExact($"{data} {hora}", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime scheduledAt))
@@ -67,6 +67,7 @@ public class AppointmentService : IAppointmentService
             Id = Guid.NewGuid(),
             CompanyId = companyId,
             ConversationId = conversationId,
+            ProfessionalId = professionalId,
             ServiceName = serviceName,
             CustomerName = customerName,
             ScheduledAt = scheduledAt,
@@ -76,7 +77,7 @@ public class AppointmentService : IAppointmentService
         try
         {
             await _companiesRepository.LockCompany(companyId);
-            if(!await _availabilityPolicy.IsSlotFree(companyId, scheduledAt))
+            if(!await _availabilityPolicy.IsSlotFree(companyId, professionalId, scheduledAt))
             {
                 await transaction.RollbackAsync();
                 return Result<Appointment>.Conflict("Esse horário não está disponível.");

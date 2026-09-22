@@ -72,6 +72,6 @@ public class CreateAppointmentTool : IChatTool
         // format from the parsed ScheduledAt (source of truth), pt-BR so the weekday reads in Portuguese
         Appointment appointment = result.Value!;
         string quando = appointment.ScheduledAt.ToString("dddd, dd/MM 'às' HH:mm", new CultureInfo("pt-BR"));
-        return new ToolOutcome($"Pronto, {args.Nome}! Seu {args.Servico} ficou agendado para {quando}.", FinalResponse: true);
+        return new ToolOutcome($"Pronto, {args.Nome}! Seu {args.Servico} com {professional.Name} ficou agendado para {quando}.", FinalResponse: true);
     }
 }

@@ -53,7 +53,9 @@ public class GetAppointmentsTool : IChatTool
             {
                 status = "confirmado";
             }
-            lines.Add($"{appointment.ServiceName} — {quando} ({status})");
+
+            string profissional = string.IsNullOrWhiteSpace(appointment.ProfessionalName) ? "" : $" com {appointment.ProfessionalName}";
+            lines.Add($"{appointment.ServiceName}{profissional} — {quando} ({status})");
         }
         if (lines.Count == 0)
         {

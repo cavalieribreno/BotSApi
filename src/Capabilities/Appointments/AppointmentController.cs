@@ -16,14 +16,23 @@ public class AppointmentController : ControllerBase
         _appointmentService = appointmentService;
     }
     [HttpGet]
-    public async Task<IActionResult> GetAppointments()
+    public async Task<IActionResult> GetAppointments([FromQuery] DateOnly? date = null)
     {
         string? companyId = User.FindFirstValue("companyId");
         if(!Guid.TryParse(companyId, out Guid companyGuid))
         {
             return Unauthorized(new { error = "Empresa inválida"});
         }
-        List <Appointment> appointments = await _appointmentService.GetAppointments(companyGuid);
+        DateOnly targetDate;
+        if (date.HasValue)
+        {
+            targetDate = date.Value;
+        }
+        else
+        {
+            targetDate = DateOnly.FromDateTime(DateTime.Now);
+        }
+        List<Appointment> appointments = await _appointmentService.GetAppointments(companyGuid, targetDate);
 
         List<AppointmentResponse> response = new List<AppointmentResponse>();
         foreach(Appointment appointment in appointments)

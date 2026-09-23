@@ -93,14 +93,14 @@ public class AppointmentService : IAppointmentService
         }
     }
 
-    // Owner's view: all appointments of a company. Entry point (from a controller), so it opens its own connection.
-    public async Task<List<Appointment>> GetAppointments(Guid companyId)
+    // Owner's view: all appointments of a company for a specific date. Entry point (from a controller), so it opens its own connection.
+    public async Task<List<Appointment>> GetAppointments(Guid companyId, DateOnly date)
     {
         using DbConnection connection = _databaseConnection.CreateConnection();
         _dbSession.Connection = connection;
         await connection.OpenAsync();
 
-        return await _appointmentRepository.GetAppointmentsByCompany(companyId);
+        return await _appointmentRepository.GetAppointmentsByCompany(companyId, date);
     }
 
     // Customer self-service: all appointments of one customer (company + phone). Opens its own connection.

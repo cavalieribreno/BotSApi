@@ -30,20 +30,30 @@ public class AppointmentRepository : IAppointmentRepository
         await command.ExecuteNonQueryAsync();
     }
 
-    // All appointments of a company, soonest-first. List empty, never null.
-    public async Task<List<Appointment>> GetAppointmentsByCompany(Guid companyId)
+    // Appointments of a company on a specific date, soonest-first.
+    // Uses [start, end) interval for index efficiency (SARGable).
+    public async Task<List<Appointment>> GetAppointmentsByCompany(Guid companyId, DateOnly date)
     {
         List<Appointment> appointments = new List<Appointment>();
 
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
+
+        DateTime start = date.ToDateTime(TimeOnly.MinValue);
+        DateTime end = date.AddDays(1).ToDateTime(TimeOnly.MinValue);
+
         command.CommandText = @"SELECT ap.id, ap.company_id, ap.conversation_id, ap.professional_id, pr.name AS professional_name, 
                                        ap.service_name, ap.customer_name, ap.scheduled_at, ap.status, ap.reminded_at, ap.created_at 
                                 FROM appointments ap
                                 INNER JOIN professionals pr ON ap.professional_id = pr.id
-                                WHERE ap.company_id = @company_id 
+                                WHERE ap.company_id = @company_id
+                                  AND ap.scheduled_at >= @start 
+                                  AND ap.scheduled_at < @end
                                 ORDER BY ap.scheduled_at";
+
         command.AddParameter("@company_id", companyId.ToString());
+        command.AddParameter("@start", start);
+        command.AddParameter("@end", end);
 
         using DbDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())

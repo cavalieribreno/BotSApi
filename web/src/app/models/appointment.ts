@@ -3,6 +3,8 @@ export interface Appointment {
   id: string;
   companyId: string;
   conversationId: string;
+  professionalId: string;
+  professionalName: string;
   serviceName: string;
   customerName: string;
   scheduledAt: string;

@@ -1,68 +1,447 @@
-<main class="content">
-  <div class="page-head">
-    <h1>Agendamentos</h1>
+<main class="w-full px-4 sm:px-6 lg:px-8 py-5 space-y-6 pb-24 lg:pb-10">
+
+  <!-- FEEDBACK DE ERRO -->
+  @if (error()) {
+    <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i class="ph-fill ph-warning-circle text-base"></i>
+        <span>{{ error() }}</span>
+      </div>
+      <button (click)="error.set('')" class="text-red-500 hover:text-red-700">
+        <i class="ph ph-x"></i>
+      </button>
+    </div>
+  }
+
+  <!-- BARRA DE CONTROLES: MODOS DE VISÃO & FILTROS -->
+  <div class="bg-white border border-barber-border rounded-2xl p-3 shadow-xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+    
+    <!-- Lado Esquerdo: Alternador de Visão -->
+    <div class="flex items-center p-1 bg-zinc-100 rounded-xl border border-zinc-200/80">
+      <button 
+        (click)="setViewMode('grid')" 
+        [class.bg-white]="viewMode() === 'grid'"
+        [class.text-barber-black]="viewMode() === 'grid'"
+        [class.shadow-xs]="viewMode() === 'grid'"
+        [class.font-bold]="viewMode() === 'grid'"
+        [class.text-barber-mute]="viewMode() !== 'grid'"
+        class="px-3.5 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
+        <i class="ph ph-squares-four text-sm"></i>
+        <span>Cadeiras (Grid)</span>
+      </button>
+
+      <button 
+        (click)="setViewMode('list')" 
+        [class.bg-white]="viewMode() === 'list'"
+        [class.text-barber-black]="viewMode() === 'list'"
+        [class.shadow-xs]="viewMode() === 'list'"
+        [class.font-bold]="viewMode() === 'list'"
+        [class.text-barber-mute]="viewMode() !== 'list'"
+        class="px-3.5 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
+        <i class="ph ph-list-dashes text-sm"></i>
+        <span>Lista Cronológica</span>
+      </button>
+    </div>
+
+    <!-- Controles da Direita: Navegador de Data + Dropdown de Profissional + Filtro de Status + Recarregar -->
+    <div class="flex flex-wrap items-center gap-2.5">
+      
+      <!-- Navegador de Data Executivo -->
+      <div class="flex items-center bg-zinc-50 border border-zinc-200 rounded-xl p-0.5 shadow-2xs">
+        <button 
+          (click)="previousDay()" 
+          class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-zinc-600 hover:text-zinc-950 transition-all cursor-pointer" 
+          title="Dia anterior">
+          <i class="ph ph-caret-left text-xs font-bold"></i>
+        </button>
+
+        <button 
+          (click)="goToToday()"
+          class="px-3 py-1 text-xs font-bold text-barber-black hover:bg-white rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+          title="Clique para ir para Hoje">
+          <i class="ph ph-calendar text-sm text-zinc-500"></i>
+          <span>{{ selectedDateFormatted() }}</span>
+        </button>
+
+        <button 
+          (click)="nextDay()" 
+          class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-zinc-600 hover:text-zinc-950 transition-all cursor-pointer" 
+          title="Próximo dia">
+          <i class="ph ph-caret-right text-xs font-bold"></i>
+        </button>
+      </div>
+      
+      <!-- Dropdown Customizado de Profissional -->
+      <div class="relative">
+        <button 
+          (click)="toggleProDropdown()" 
+          class="flex items-center gap-2 pl-3 pr-2.5 py-1.5 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 text-xs font-semibold text-barber-black rounded-xl cursor-pointer transition-all shadow-xs">
+          <i class="ph ph-user text-zinc-400 text-sm"></i>
+          <span>{{ selectedProfessionalName() }}</span>
+          <i class="ph ph-caret-down text-zinc-400 text-xs transition-transform" [class.rotate-180]="isProDropdownOpen()"></i>
+        </button>
+
+        @if (isProDropdownOpen()) {
+          <div class="fixed inset-0 z-40" (click)="isProDropdownOpen.set(false)"></div>
+          <div class="absolute right-0 mt-1.5 w-56 bg-white rounded-xl shadow-lg border border-zinc-200/80 py-1.5 z-50 animate-in fade-in duration-100">
+            <button 
+              (click)="selectProfessional('All')" 
+              class="w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-zinc-50 transition-colors"
+              [class.text-barber-black]="professionalFilter() === 'All'"
+              [class.font-bold]="professionalFilter() === 'All'"
+              [class.bg-zinc-50]="professionalFilter() === 'All'">
+              <div class="flex items-center gap-2">
+                <i class="ph ph-users text-zinc-400 text-sm"></i>
+                <span>Todos os Profissionais</span>
+              </div>
+              @if (professionalFilter() === 'All') {
+                <i class="ph ph-check text-xs font-bold text-barber-black"></i>
+              }
+            </button>
+
+            <div class="h-px bg-zinc-100 my-1"></div>
+
+            @for (p of professionals(); track p.id) {
+              <button 
+                (click)="selectProfessional(p.id)" 
+                class="w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-zinc-50 transition-colors"
+                [class.text-barber-black]="professionalFilter() === p.id"
+                [class.font-bold]="professionalFilter() === p.id"
+                [class.bg-zinc-50]="professionalFilter() === p.id">
+                <div class="flex items-center gap-2">
+                  <span class="w-5 h-5 rounded-md bg-zinc-100 text-zinc-700 text-[10px] font-bold flex items-center justify-center">
+                    {{ p.name.charAt(0).toUpperCase() }}
+                  </span>
+                  <span class="truncate">{{ p.name }}</span>
+                </div>
+                @if (professionalFilter() === p.id) {
+                  <i class="ph ph-check text-xs font-bold text-barber-black"></i>
+                }
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Dropdown Customizado de Status -->
+      <div class="relative">
+        <button 
+          (click)="toggleStatusDropdown()" 
+          class="flex items-center gap-2 pl-3 pr-2.5 py-1.5 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 text-xs font-semibold text-barber-black rounded-xl cursor-pointer transition-all shadow-xs">
+          <i class="ph ph-funnel text-zinc-400 text-sm"></i>
+          <span>{{ selectedStatusName() }}</span>
+          <i class="ph ph-caret-down text-zinc-400 text-xs transition-transform" [class.rotate-180]="isStatusDropdownOpen()"></i>
+        </button>
+
+        @if (isStatusDropdownOpen()) {
+          <div class="fixed inset-0 z-40" (click)="isStatusDropdownOpen.set(false)"></div>
+          <div class="absolute right-0 mt-1.5 w-48 bg-white rounded-xl shadow-lg border border-zinc-200/80 py-1.5 z-50 animate-in fade-in duration-100">
+            <button 
+              (click)="selectStatus('All')" 
+              class="w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-zinc-50 transition-colors"
+              [class.text-barber-black]="statusFilter() === 'All'"
+              [class.font-bold]="statusFilter() === 'All'"
+              [class.bg-zinc-50]="statusFilter() === 'All'">
+              <div class="flex items-center gap-2">
+                <i class="ph ph-list text-zinc-400"></i>
+                <span>Todos os Status</span>
+              </div>
+              @if (statusFilter() === 'All') {
+                <i class="ph ph-check text-xs font-bold text-barber-black"></i>
+              }
+            </button>
+
+            <div class="h-px bg-zinc-100 my-1"></div>
+
+            <button 
+              (click)="selectStatus('Pending')" 
+              class="w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-zinc-50 transition-colors"
+              [class.text-barber-black]="statusFilter() === 'Pending'"
+              [class.font-bold]="statusFilter() === 'Pending'"
+              [class.bg-zinc-50]="statusFilter() === 'Pending'">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span>Pendentes</span>
+              </div>
+              @if (statusFilter() === 'Pending') {
+                <i class="ph ph-check text-xs font-bold text-barber-black"></i>
+              }
+            </button>
+
+            <button 
+              (click)="selectStatus('Confirmed')" 
+              class="w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-zinc-50 transition-colors"
+              [class.text-barber-black]="statusFilter() === 'Confirmed'"
+              [class.font-bold]="statusFilter() === 'Confirmed'"
+              [class.bg-zinc-50]="statusFilter() === 'Confirmed'">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Confirmados</span>
+              </div>
+              @if (statusFilter() === 'Confirmed') {
+                <i class="ph ph-check text-xs font-bold text-barber-black"></i>
+              }
+            </button>
+
+            <button 
+              (click)="selectStatus('Completed')" 
+              class="w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-zinc-50 transition-colors"
+              [class.text-barber-black]="statusFilter() === 'Completed'"
+              [class.font-bold]="statusFilter() === 'Completed'"
+              [class.bg-zinc-50]="statusFilter() === 'Completed'">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-zinc-500"></span>
+                <span>Concluídos</span>
+              </div>
+              @if (statusFilter() === 'Completed') {
+                <i class="ph ph-check text-xs font-bold text-barber-black"></i>
+              }
+            </button>
+          </div>
+        }
+      </div>
+
+      <!-- Botão Recarregar -->
+      <button 
+        (click)="load()" 
+        [disabled]="loading()"
+        class="w-8 h-8 flex items-center justify-center rounded-lg border border-barber-border bg-white hover:bg-gray-50 text-barber-black transition-colors disabled:opacity-50"
+        title="Atualizar agenda">
+        <i class="ph ph-arrow-clockwise text-sm" [class.animate-spin]="loading()"></i>
+      </button>
+    </div>
+
   </div>
 
-  @if (error()) {
-    <div class="alert">{{ error() }}</div>
-  }
-
+  <!-- LOADING STATE -->
   @if (loading()) {
-    <p class="empty">Carregando...</p>
-  } @else if (appointments().length === 0) {
-    <p class="empty">Nenhum agendamento ainda.</p>
+    <div class="bg-white border border-barber-border rounded-2xl p-16 text-center text-barber-mute shadow-xs">
+      <i class="ph ph-circle-notch text-3xl animate-spin mb-3 inline-block text-barber-black"></i>
+      <p class="text-sm font-medium">Carregando agendamentos e equipe...</p>
+    </div>
   } @else {
-    <div class="stats">
-      <div class="stat">
-        <div class="num">{{ appointments().length }}</div>
-        <div class="lbl">Total</div>
-      </div>
-      <div class="stat">
-        <div class="num">{{ count('Pending') }}</div>
-        <div class="lbl">Pendentes</div>
-      </div>
-      <div class="stat">
-        <div class="num">{{ count('Confirmed') }}</div>
-        <div class="lbl">Confirmados</div>
-      </div>
-    </div>
 
-    <div class="card">
-      <table>
-        <thead>
-          <tr>
-            <th>Serviço</th>
-            <th>Cliente</th>
-            <th>Quando</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (a of appointments(); track a.id) {
-            <tr>
-              <td class="cell-strong">{{ a.serviceName }}</td>
-              <td>{{ a.customerName }}</td>
-              <td class="cell-muted">{{ a.scheduledAt | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td><span class="badge" [attr.data-status]="a.status">{{ statusLabel(a.status) }}</span></td>
-              <td>
-                <div class="actions-cell">
-                  @if (a.status === 'Pending') {
-                    <button class="btn btn-sm btn-success" (click)="changeStatus(a.id, 'Confirmed')">Confirmar</button>
-                  }
-                  @if (a.status === 'Confirmed') {
-                    <button class="btn btn-sm btn-outline" (click)="changeStatus(a.id, 'Completed')">Concluir</button>
-                  }
-                  @if (a.status === 'Pending' || a.status === 'Confirmed') {
-                    <button class="btn btn-sm btn-danger" (click)="cancel(a.id)">Cancelar</button>
-                  }
-                  <a [routerLink]="['/conversations', a.conversationId]" class="link">Ver conversa</a>
+    <!-- VISÃO 1: GRADE DE CADEIRAS (GRID HORÁRIO) -->
+    @if (viewMode() === 'grid') {
+      <div class="bg-white border border-barber-border rounded-2xl shadow-xs overflow-x-auto w-full">
+        <div class="w-max min-w-full">
+          
+          <!-- Header da Tabela: Colunas dos Profissionais -->
+          <div 
+            class="grid border-b border-barber-border bg-zinc-50/90 font-display"
+            [style.grid-template-columns]="'88px repeat(' + filteredProfessionals().length + ', minmax(230px, 1fr))'">
+            
+            <!-- Coluna 0: Horário -->
+            <div class="p-3.5 text-xs font-extrabold text-zinc-600 uppercase tracking-wider text-center border-r border-barber-border flex items-center justify-center bg-zinc-100/50">
+              HORA
+            </div>
+
+            <!-- Colunas por Profissional -->
+            @for (p of filteredProfessionals(); track p.id) {
+              <div class="p-3.5 border-r border-barber-border last:border-r-0 flex items-center justify-between gap-2.5 min-w-0">
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div class="w-9 h-9 rounded-xl bg-barber-black text-white flex items-center justify-center font-display font-bold text-sm shadow-xs shrink-0">
+                    {{ getInitials(p.name) }}
+                  </div>
+                  <div class="font-display font-bold text-sm text-barber-black truncate" [title]="p.name">
+                    {{ p.name }}
+                  </div>
                 </div>
-              </td>
-            </tr>
+                <span class="shrink-0 whitespace-nowrap text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80 shadow-2xs">
+                  {{ countForProfessional(p.id) }} agendados
+                </span>
+              </div>
+            }
+
+          </div>
+
+          <!-- LINHAS DE HORÁRIOS -->
+          <div class="divide-y divide-zinc-200">
+            @for (hour of gridHours; track hour) {
+              <div 
+                class="grid min-h-[88px]"
+                [style.grid-template-columns]="'88px repeat(' + filteredProfessionals().length + ', minmax(230px, 1fr))'">
+                
+                <!-- Coluna de Horário -->
+                <div class="p-3 text-sm font-bold text-zinc-700 text-center border-r border-barber-border flex items-center justify-center bg-zinc-50/50">
+                  {{ hour }}
+                </div>
+
+                <!-- Colunas dos Profissionais -->
+                @for (p of filteredProfessionals(); track p.id) {
+                  <div class="p-2 border-r border-barber-border last:border-r-0 flex flex-col justify-center">
+                    
+                    @if (getAppointmentsForSlot(p.id, hour); as apts) {
+                      @if (apts.length > 0) {
+                        <div class="flex flex-col gap-2 w-full">
+                          @for (apt of apts; track apt.id) {
+                            <!-- Card Pendente -->
+                            @if (apt.status === 'Pending') {
+                              <div class="bg-amber-50 hover:bg-amber-100/80 border-2 border-amber-300 rounded-xl p-3 flex flex-col justify-between transition-all shadow-xs">
+                                <div class="flex items-start justify-between gap-1.5">
+                                  <div class="truncate">
+                                    <h4 class="font-bold text-sm text-amber-950 truncate">{{ apt.customerName }}</h4>
+                                    <p class="text-xs font-medium text-amber-800 truncate mt-0.5">{{ apt.serviceName }}</p>
+                                  </div>
+                                  <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 border border-amber-300 shrink-0 uppercase tracking-wider">
+                                    Pendente
+                                  </span>
+                                </div>
+                                <div class="flex items-center justify-between mt-2 pt-1 border-t border-amber-200/60">
+                                  <span class="text-xs text-amber-900 font-bold">Às {{ apt.scheduledAt | date:'HH:mm' }}</span>
+                                  <button 
+                                    (click)="changeStatus(apt.id, 'Confirmed')"
+                                    class="px-3 py-1 bg-barber-black hover:bg-zinc-800 text-white rounded-lg text-xs font-bold shadow-xs transition-all cursor-pointer">
+                                    Confirmar
+                                  </button>
+                                </div>
+                              </div>
+                            } 
+                            <!-- Card Confirmado -->
+                            @else if (apt.status === 'Confirmed') {
+                              <div class="bg-emerald-50/90 hover:bg-emerald-100/80 border-2 border-emerald-300/80 rounded-xl p-3 flex flex-col justify-between transition-all shadow-xs">
+                                <div class="flex items-start justify-between gap-1.5">
+                                  <div class="truncate">
+                                    <h4 class="font-bold text-sm text-emerald-950 truncate">{{ apt.customerName }}</h4>
+                                    <p class="text-xs font-medium text-emerald-800 truncate mt-0.5">{{ apt.serviceName }}</p>
+                                  </div>
+                                  <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 uppercase tracking-wider">
+                                    Confirmado
+                                  </span>
+                                </div>
+                                <div class="flex items-center justify-between mt-2 pt-1 border-t border-emerald-200/60">
+                                  <span class="text-xs text-emerald-900 font-bold">Às {{ apt.scheduledAt | date:'HH:mm' }}</span>
+                                  <a 
+                                    [routerLink]="['/conversations', apt.conversationId]"
+                                    class="text-xs font-bold text-emerald-900 hover:text-emerald-950 hover:underline flex items-center gap-1">
+                                    <i class="ph ph-chat-circle-dots"></i>
+                                    <span>Ver Chat</span>
+                                  </a>
+                                </div>
+                              </div>
+                            }
+                            <!-- Card Concluído -->
+                            @else if (apt.status === 'Completed') {
+                              <div class="bg-zinc-100 border border-zinc-200 rounded-xl p-3 flex flex-col justify-between">
+                                <div class="flex items-start justify-between gap-1.5">
+                                  <div class="truncate">
+                                    <h4 class="font-bold text-sm text-zinc-700 truncate">{{ apt.customerName }}</h4>
+                                    <p class="text-xs font-medium text-zinc-500 truncate mt-0.5">{{ apt.serviceName }}</p>
+                                  </div>
+                                  <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-zinc-200 text-zinc-700 shrink-0 uppercase tracking-wider">
+                                    Concluído
+                                  </span>
+                                </div>
+                                <span class="text-xs text-zinc-500 font-bold mt-1">Às {{ apt.scheduledAt | date:'HH:mm' }}</span>
+                              </div>
+                            }
+                          }
+                        </div>
+                      } @else {
+                        <!-- Slot Vazio -->
+                        <div class="h-full rounded-xl border border-dashed border-transparent hover:border-zinc-300 flex items-center justify-center transition-all group min-h-[48px]">
+                          <span class="text-xs font-semibold text-transparent group-hover:text-zinc-400 transition-colors">
+                            Livre
+                          </span>
+                        </div>
+                      }
+                    }
+
+                  </div>
+                }
+
+              </div>
+            }
+          </div>
+
+        </div>
+      </div>
+    }
+
+    <!-- VISÃO 2: LISTA CRONOLÓGICA -->
+    @if (viewMode() === 'list') {
+      <div class="bg-white border border-barber-border rounded-2xl shadow-xs divide-y divide-zinc-100 overflow-hidden">
+        
+        <!-- Header da Lista -->
+        <div class="p-4 bg-zinc-50 border-b border-barber-border flex items-center justify-between">
+          <span class="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+            Atendimentos por ordem de horário ({{ filteredAppointments().length }})
+          </span>
+          <div class="relative w-64">
+            <input 
+              type="text" 
+              [ngModel]="searchTerm()"
+              (ngModelChange)="searchTerm.set($event)"
+              placeholder="Buscar cliente ou serviço..."
+              class="w-full pl-8 pr-3 py-1 text-xs bg-white border border-barber-border rounded-lg text-barber-black font-medium focus:outline-none"
+            />
+            <i class="ph ph-magnifying-glass text-xs text-zinc-400 absolute left-2.5 top-2"></i>
+          </div>
+        </div>
+
+        @if (filteredAppointments().length === 0) {
+          <div class="p-12 text-center text-barber-mute text-sm font-medium">
+            Nenhum agendamento encontrado com os filtros selecionados.
+          </div>
+        } @else {
+          @for (a of filteredAppointments(); track a.id) {
+            <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-zinc-50 transition-colors">
+              <div class="flex items-center gap-4">
+                <div class="w-14 font-display font-bold text-base text-barber-black">
+                  {{ a.scheduledAt | date:'HH:mm' }}
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm text-barber-black">{{ a.customerName }}</h4>
+                  <div class="text-xs text-barber-mute flex items-center gap-2">
+                    <span>{{ a.serviceName }}</span>
+                    @if (a.professionalName) {
+                      <span>•</span>
+                      <span class="font-semibold text-zinc-700">{{ a.professionalName }}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ações & Status -->
+              <div class="flex items-center gap-3">
+                @if (a.status === 'Pending') {
+                  <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                    PENDENTE
+                  </span>
+                  <button 
+                    (click)="changeStatus(a.id, 'Confirmed')"
+                    class="bg-barber-black hover:bg-zinc-800 text-white px-3 py-1 rounded-lg text-xs font-bold transition-all shadow-xs">
+                    Confirmar
+                  </button>
+                } @else if (a.status === 'Confirmed') {
+                  <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    CONFIRMADO
+                  </span>
+                  <button 
+                    (click)="changeStatus(a.id, 'Completed')"
+                    class="bg-white hover:bg-zinc-100 border border-barber-border text-zinc-800 px-3 py-1 rounded-lg text-xs font-semibold transition-all">
+                    Concluir
+                  </button>
+                } @else if (a.status === 'Completed') {
+                  <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-zinc-200 text-zinc-700">
+                    CONCLUÍDO
+                  </span>
+                }
+
+                <a 
+                  [routerLink]="['/conversations', a.conversationId]"
+                  class="p-1.5 text-zinc-400 hover:text-zinc-800 rounded-lg hover:bg-zinc-100 transition-colors"
+                  title="Ver conversa no chat">
+                  <i class="ph ph-chat-circle-dots text-base"></i>
+                </a>
+              </div>
+            </div>
           }
-        </tbody>
-      </table>
-    </div>
+        }
+
+      </div>
+    }
+
   }
+
 </main>

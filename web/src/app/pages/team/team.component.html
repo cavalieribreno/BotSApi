@@ -1,0 +1,254 @@
+<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-8">
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div>
+      <h1 class="font-display font-bold text-3xl text-barber-black tracking-tight">Equipe e Profissionais</h1>
+      <p class="text-barber-mute text-sm mt-1">
+        Gerencie os profissionais disponíveis para receber agendamentos no seu estabelecimento.
+      </p>
+    </div>
+    
+    <div class="flex items-center gap-2.5">
+      <button 
+        (click)="load()" 
+        [disabled]="loading()"
+        class="w-10 h-10 flex items-center justify-center rounded-xl border border-barber-border bg-white hover:bg-gray-50 text-barber-black transition-colors shadow-sm disabled:opacity-50"
+        title="Atualizar lista">
+        <i class="ph ph-arrow-clockwise text-lg" [class.animate-spin]="loading()"></i>
+      </button>
+
+      <button 
+        (click)="openAddModal()"
+        class="bg-barber-black hover:bg-zinc-800 text-white px-5 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2">
+        <i class="ph-bold ph-plus text-base"></i>
+        <span>Novo Profissional</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Feedback Alerts -->
+  @if (error()) {
+    <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <i class="ph-fill ph-warning-circle text-lg shrink-0"></i>
+        <span>{{ error() }}</span>
+      </div>
+      <button (click)="error.set('')" class="text-red-500 hover:text-red-700 p-1">
+        <i class="ph ph-x text-base"></i>
+      </button>
+    </div>
+  }
+
+  @if (successMessage()) {
+    <div class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <i class="ph-fill ph-check-circle text-lg shrink-0"></i>
+        <span>{{ successMessage() }}</span>
+      </div>
+      <button (click)="successMessage.set('')" class="text-emerald-600 hover:text-emerald-800 p-1">
+        <i class="ph ph-x text-base"></i>
+      </button>
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="bg-white border border-barber-border rounded-2xl p-16 text-center text-barber-mute shadow-sm">
+      <i class="ph ph-circle-notch text-3xl animate-spin mb-3 inline-block text-barber-black"></i>
+      <p class="text-sm font-medium">Carregando equipe de profissionais...</p>
+    </div>
+  } @else if (professionals().length === 0) {
+    <!-- Empty State -->
+    <div class="bg-white border border-dashed border-barber-border rounded-2xl p-16 text-center max-w-lg mx-auto">
+      <div class="w-14 h-14 bg-zinc-100 text-barber-mute rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+        <i class="ph ph-users"></i>
+      </div>
+      <h3 class="font-display font-semibold text-lg text-barber-black mb-1">Nenhum profissional cadastrado</h3>
+      <p class="text-barber-mute text-sm mb-6">
+        Cadastre os membros da sua equipe para que os clientes possam agendar serviços com cada um.
+      </p>
+      <button 
+        (click)="openAddModal()"
+        class="bg-barber-black hover:bg-zinc-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all inline-flex items-center gap-2">
+        <i class="ph-bold ph-plus text-base"></i>
+        <span>Adicionar Primeiro Profissional</span>
+      </button>
+    </div>
+  } @else {
+    <!-- Professionals Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      @for (p of professionals(); track p.id) {
+        <div class="bg-white border border-barber-border rounded-2xl p-5 shadow-sm transition-all hover:shadow-md hover:border-zinc-300 flex flex-col justify-between">
+          
+          <!-- Card Header: Avatar & Status Badge -->
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-12 h-12 rounded-xl bg-barber-black text-white flex items-center justify-center font-display font-bold text-base shadow-sm">
+                {{ getInitials(p.name) }}
+              </div>
+              
+              <!-- Status Badge -->
+              <div>
+                @if (p.status === 'Active') {
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Ativo
+                  </span>
+                } @else if (p.status === 'OnVacation') {
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                    Férias
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-600 border border-zinc-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+                    Inativo
+                  </span>
+                }
+              </div>
+            </div>
+
+            <!-- Normal Display vs Edit Mode -->
+            @if (editingId() === p.id) {
+              <!-- Edit Form -->
+              <div class="space-y-3 my-2">
+                <div>
+                  <label class="block text-xs font-semibold text-barber-mute uppercase tracking-wider mb-1">Nome</label>
+                  <input 
+                    type="text" 
+                    [ngModel]="editName()"
+                    (ngModelChange)="editName.set($event)"
+                    placeholder="Nome do profissional"
+                    class="w-full px-3 py-2 text-sm bg-zinc-50 border border-barber-border rounded-xl focus:outline-none focus:ring-2 focus:ring-barber-black/10 focus:border-barber-black transition-all font-medium text-barber-black"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-barber-mute uppercase tracking-wider mb-1">Status</label>
+                  <select 
+                    [ngModel]="editStatus()"
+                    (ngModelChange)="editStatus.set($event)"
+                    class="w-full px-3 py-2 text-sm bg-zinc-50 border border-barber-border rounded-xl focus:outline-none focus:ring-2 focus:ring-barber-black/10 focus:border-barber-black transition-all font-medium text-barber-black">
+                    <option value="Active">Ativo</option>
+                    <option value="OnVacation">Em Férias</option>
+                    <option value="Inactive">Inativo</option>
+                  </select>
+                </div>
+
+                <div class="flex items-center gap-2 pt-2">
+                  <button 
+                    (click)="saveEdit(p)" 
+                    [disabled]="saving()"
+                    class="flex-1 bg-barber-black hover:bg-zinc-800 text-white py-1.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-50">
+                    {{ saving() ? 'Salvando...' : 'Salvar' }}
+                  </button>
+                  <button 
+                    (click)="cancelEdit()" 
+                    [disabled]="saving()"
+                    class="px-3 py-1.5 border border-barber-border hover:bg-zinc-50 text-barber-mute hover:text-barber-black rounded-xl text-xs font-semibold transition-all">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <!-- Normal View -->
+              <h3 class="font-display font-semibold text-lg text-barber-black truncate" [title]="p.name">
+                {{ p.name }}
+              </h3>
+              <p class="text-xs text-barber-mute mt-1">
+                Membro da equipe
+              </p>
+            }
+          </div>
+
+          <!-- Card Actions (when not in edit mode) -->
+          @if (editingId() !== p.id) {
+            <div class="flex items-center justify-between pt-4 mt-4 border-t border-barber-border/60">
+              <button 
+                (click)="toggleQuickStatus(p)"
+                [disabled]="saving()"
+                class="text-xs font-semibold transition-colors disabled:opacity-50"
+                [class.text-amber-600]="p.status === 'Active'"
+                [class.hover:text-amber-700]="p.status === 'Active'"
+                [class.text-emerald-600]="p.status !== 'Active'"
+                [class.hover:text-emerald-700]="p.status !== 'Active'">
+                {{ p.status === 'Active' ? 'Pausar Atendimento' : 'Tornar Ativo' }}
+              </button>
+
+              <button 
+                (click)="startEdit(p)"
+                class="p-2 text-barber-mute hover:text-barber-black hover:bg-zinc-100 rounded-xl transition-colors"
+                title="Editar profissional">
+                <i class="ph ph-pencil-simple text-base"></i>
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Modal: Novo Profissional -->
+  @if (showAddModal()) {
+    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white border border-barber-border rounded-2xl shadow-xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200">
+        
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-display font-bold text-xl text-barber-black">Novo Profissional</h3>
+            <p class="text-xs text-barber-mute mt-0.5">Cadastre um profissional para sua equipe.</p>
+          </div>
+          <button 
+            (click)="closeAddModal()"
+            class="text-barber-mute hover:text-barber-black p-1.5 rounded-lg hover:bg-zinc-100 transition-colors">
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        <!-- Input Field -->
+        <div class="mb-5">
+          <label class="block text-xs font-semibold text-barber-mute uppercase tracking-wider mb-1.5">
+            Nome Completo
+          </label>
+          <input 
+            type="text" 
+            [ngModel]="newName()"
+            (ngModelChange)="newName.set($event)"
+            (keydown.enter)="createProfessional()"
+            placeholder="Ex: Carlos Oliveira"
+            autofocus
+            class="w-full px-4 py-2.5 text-sm bg-zinc-50 border border-barber-border rounded-xl focus:outline-none focus:ring-2 focus:ring-barber-black/10 focus:border-barber-black transition-all text-barber-black font-medium"
+          />
+          <p class="text-[11px] text-zinc-400 mt-1.5">
+            O profissional começará com status ativo para receber agendamentos.
+          </p>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="flex items-center justify-end gap-3 pt-2 border-t border-barber-border">
+          <button 
+            (click)="closeAddModal()"
+            [disabled]="saving()"
+            class="px-4 py-2 border border-barber-border hover:bg-zinc-50 text-barber-mute hover:text-barber-black rounded-xl text-sm font-semibold transition-all">
+            Cancelar
+          </button>
+          
+          <button 
+            (click)="createProfessional()"
+            [disabled]="saving() || !newName().trim()"
+            class="bg-barber-black hover:bg-zinc-800 text-white px-5 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50">
+            @if (saving()) {
+              <i class="ph ph-circle-notch text-base animate-spin"></i>
+              <span>Salvando...</span>
+            } @else {
+              <i class="ph-bold ph-plus text-base"></i>
+              <span>Cadastrar</span>
+            }
+          </button>
+        </div>
+
+      </div>
+    </div>
+  }
+</main>

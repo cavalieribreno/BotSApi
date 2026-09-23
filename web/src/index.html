@@ -1,13 +1,51 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>Web</title>
+  <title>BarberRoom • Agenda Inteligente</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!-- Fonts: Outfit for display/headings, Inter for UI data -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            barber: {
+              bg: '#F6F6F6',
+              surface: '#FFFFFF',
+              black: '#09090B',
+              mute: '#71717A',
+              border: '#E4E4E7',
+              accent: '#D97706',
+              accent_light: '#FEF3C7',
+            }
+          },
+          boxShadow: {
+            'premium': '0 4px 40px -8px rgba(0, 0, 0, 0.04)',
+            'floating': '0 12px 32px -12px rgba(0, 0, 0, 0.1)',
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body>
+<body class="text-barber-black font-sans antialiased min-h-screen flex flex-col">
   <app-root></app-root>
 </body>
 </html>

@@ -3,6 +3,8 @@ import { LoginComponent } from './pages/login/login.component';
 import { LayoutComponent } from './layout/layout.component';
 import { AppointmentsComponent } from './pages/appointments/appointments.component';
 import { ConversationComponent } from './pages/conversation/conversation.component';
+import { SettingsComponent } from './pages/settings/settings.component';
+import { TeamComponent } from './pages/team/team.component';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -14,7 +16,9 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: 'appointments', component: AppointmentsComponent },
+      { path: 'team', component: TeamComponent },
       { path: 'conversations/:id', component: ConversationComponent },
+      { path: 'settings', component: SettingsComponent },
       { path: '', redirectTo: 'appointments', pathMatch: 'full' }
     ]
   }

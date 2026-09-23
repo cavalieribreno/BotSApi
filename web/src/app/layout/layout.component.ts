@@ -28,6 +28,11 @@ export class LayoutComponent {
     return this.company.charAt(0).toUpperCase();
   }
 
+  get todayFormatted(): string {
+    const now = new Date();
+    return now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+
   logout(): void {
     this.auth.logout();
     this.router.navigate(['/login']);

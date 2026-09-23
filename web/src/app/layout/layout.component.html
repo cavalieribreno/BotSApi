@@ -1,52 +1,102 @@
-<div class="app">
-  <aside class="sidebar">
-    <div class="brand">
-      <span class="logo">{{ companyInitial }}</span>
-      <div>
-        <strong>{{ company }}</strong>
-        <span class="brand-sub">Painel do dono</span>
+<!-- Cabeçalho Sólido Corporativo (Edge-to-Edge, colado no topo) -->
+<header class="sticky top-0 z-50 w-full bg-white border-b border-barber-border">
+  
+  <!-- Linha 1: Marca da Empresa e Perfil -->
+  <div class="w-full px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4 border-b border-zinc-100">
+    
+    <!-- Logo & Nome da Empresa -->
+    <div class="flex items-center gap-3 cursor-pointer" routerLink="/appointments">
+      <div class="w-8 h-8 bg-barber-black text-white rounded-lg flex items-center justify-center font-display font-bold text-sm shadow-xs">
+        {{ companyInitial }}
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="font-display font-bold text-base text-barber-black tracking-tight">{{ company }}</span>
+        <span class="text-xs text-zinc-400 font-medium hidden sm:inline">/</span>
+        <span class="text-xs font-semibold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md hidden sm:inline">Painel de Recepção</span>
       </div>
     </div>
 
-    <div class="nav-label">Menu</div>
-    <nav>
-      <a class="nav-item" routerLink="/appointments" routerLinkActive="active">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        Agendamentos
+    <!-- Perfil & Logout -->
+    <div class="flex items-center gap-2">
+      <div 
+        class="w-8 h-8 rounded-xl bg-barber-black text-white flex items-center justify-center font-display font-bold text-xs shadow-xs cursor-default"
+        [title]="email">
+        {{ initial }}
+      </div>
+      <button 
+        (click)="logout()" 
+        class="p-1.5 text-barber-mute hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors" 
+        title="Sair do painel">
+        <i class="ph ph-sign-out text-lg"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Linha 2: Navegação com Sublinhado Ativo + Data -->
+  <div class="w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+    <nav class="flex items-center gap-6 sm:gap-8">
+      <a 
+        routerLink="/appointments" 
+        routerLinkActive="text-barber-black border-barber-black font-bold" 
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="flex items-center gap-2 pt-3 pb-2.5 text-xs font-semibold text-barber-mute hover:text-barber-black border-b-2 border-transparent -mb-px transition-all">
+        <i class="ph ph-calendar-blank text-base"></i>
+        <span>Agenda</span>
       </a>
-      <span class="nav-item soon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 21 11.5z"/></svg>
-        Conversas
-        <span class="soon-tag">em breve</span>
-      </span>
-      <span class="nav-item soon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Clientes
-        <span class="soon-tag">em breve</span>
-      </span>
-      <span class="nav-item soon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Configurações
-        <span class="soon-tag">em breve</span>
-      </span>
+      <a 
+        routerLink="/team" 
+        routerLinkActive="text-barber-black border-barber-black font-bold" 
+        class="flex items-center gap-2 pt-3 pb-2.5 text-xs font-semibold text-barber-mute hover:text-barber-black border-b-2 border-transparent -mb-px transition-all">
+        <i class="ph ph-users text-base"></i>
+        <span>Equipe</span>
+      </a>
+      <a 
+        routerLink="/settings" 
+        routerLinkActive="text-barber-black border-barber-black font-bold" 
+        class="flex items-center gap-2 pt-3 pb-2.5 text-xs font-semibold text-barber-mute hover:text-barber-black border-b-2 border-transparent -mb-px transition-all">
+        <i class="ph ph-clock text-base"></i>
+        <span>Horários</span>
+      </a>
     </nav>
 
-    <div class="spacer"></div>
-    <div class="sidebar-foot">powered by <strong>BotBreno</strong> · v0.1</div>
-  </aside>
-
-  <div class="main">
-    <header class="topbar">
-      <div class="user">
-        <span class="avatar">{{ initial }}</span>
-        <span class="who">
-          <span class="email">{{ email }}</span>
-          <span class="role">Dono</span>
-        </span>
-      </div>
-      <button class="btn btn-ghost" (click)="logout()">Sair</button>
-    </header>
-
-    <router-outlet />
+    <!-- Data do Dia Formatada -->
+    <div class="hidden md:flex items-center gap-2 text-xs font-medium text-zinc-500 py-2">
+      <i class="ph ph-calendar text-sm text-zinc-400"></i>
+      <span class="capitalize">{{ todayFormatted }}</span>
+    </div>
   </div>
-</div>
+</header>
+
+<!-- Routed Page Content -->
+<router-outlet />
+
+<!-- Mobile Bottom Navigation (Aparece apenas em telas pequenas) -->
+<nav class="lg:hidden fixed bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-barber-border flex justify-around pb-safe z-50 shadow-md">
+  <a 
+    routerLink="/appointments" 
+    routerLinkActive="text-barber-black font-bold" 
+    class="flex flex-col items-center gap-1 p-3 text-barber-mute">
+    <i class="ph-fill ph-calendar-blank text-xl"></i>
+    <span class="text-[10px] uppercase tracking-wider">Agenda</span>
+  </a>
+  <a 
+    routerLink="/team" 
+    routerLinkActive="text-barber-black font-bold" 
+    class="flex flex-col items-center gap-1 p-3 text-barber-mute">
+    <i class="ph ph-users text-xl"></i>
+    <span class="text-[10px] uppercase tracking-wider">Equipe</span>
+  </a>
+  <a 
+    routerLink="/settings" 
+    routerLinkActive="text-barber-black font-bold" 
+    class="flex flex-col items-center gap-1 p-3 text-barber-mute">
+    <i class="ph ph-clock text-xl"></i>
+    <span class="text-[10px] uppercase tracking-wider">Horários</span>
+  </a>
+  <button 
+    (click)="logout()" 
+    class="flex flex-col items-center gap-1 p-3 text-barber-mute hover:text-red-600">
+    <i class="ph ph-sign-out text-xl"></i>
+    <span class="text-[10px] uppercase tracking-wider">Sair</span>
+  </button>
+</nav>

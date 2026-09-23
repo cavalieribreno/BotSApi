@@ -1,0 +1,113 @@
+<main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-8">
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div>
+      <h1 class="font-display font-bold text-3xl text-barber-black tracking-tight">Horários de Atendimento</h1>
+      <p class="text-barber-mute text-sm mt-1">
+        Configure os dias e períodos em que seu bot aceitará agendamentos automaticamente.
+      </p>
+    </div>
+    
+    <div class="flex items-center gap-2.5">
+      <button 
+        class="bg-white hover:bg-gray-50 border border-barber-border hover:border-barber-black text-barber-black px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+        (click)="copyMondayToWeekdays()" 
+        [disabled]="loading() || saving()" 
+        title="Aplica o horário de Segunda-feira para Terça a Sexta">
+        <i class="ph ph-copy text-base"></i>
+        <span>Copiar Seg p/ dias úteis</span>
+      </button>
+
+      <button 
+        class="bg-barber-black hover:bg-zinc-800 text-white px-5 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+        (click)="save()" 
+        [disabled]="loading() || saving()">
+        @if (saving()) {
+          <i class="ph ph-circle-notch text-base animate-spin"></i>
+          <span>Salvando...</span>
+        } @else {
+          <i class="ph-bold ph-check text-base"></i>
+          <span>Salvar Alterações</span>
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  @if (error()) {
+    <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2.5">
+      <i class="ph-fill ph-warning-circle text-lg shrink-0"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  @if (success()) {
+    <div class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm flex items-center gap-2.5">
+      <i class="ph-fill ph-check-circle text-lg shrink-0"></i>
+      <span>{{ success() }}</span>
+    </div>
+  }
+
+  <!-- Schedule List Card -->
+  <div class="bg-white border border-barber-border rounded-2xl shadow-sm overflow-hidden">
+    @if (loading()) {
+      <div class="p-12 text-center text-barber-mute">
+        <i class="ph ph-circle-notch text-2xl animate-spin mb-2 inline-block"></i>
+        <p class="text-sm font-medium">Carregando horários de funcionamento...</p>
+      </div>
+    } @else {
+      <div class="divide-y divide-barber-border">
+        @for (day of days(); track day.dayOfWeek) {
+          <div 
+            class="flex items-center justify-between p-5 transition-colors"
+            [class.bg-gray-50]="day.isClosed"
+            [class.hover:bg-gray-50]="!day.isClosed">
+            
+            <!-- Left: Toggle Switch + Day Name -->
+            <div class="flex items-center gap-4 min-w-[200px]">
+              <label class="switch" [title]="day.isClosed ? 'Marcar como aberto' : 'Marcar como fechado'">
+                <input 
+                  type="checkbox" 
+                  [checked]="!day.isClosed" 
+                  (change)="day.isClosed = !day.isClosed" 
+                />
+                <span class="slider"></span>
+              </label>
+              <span 
+                class="font-display font-bold text-base"
+                [class.text-barber-black]="!day.isClosed"
+                [class.text-barber-mute]="day.isClosed">
+                {{ day.name }}
+              </span>
+            </div>
+
+            <!-- Right: Time Range or Closed Badge -->
+            <div>
+              @if (!day.isClosed) {
+                <div class="flex items-center gap-3">
+                  <input 
+                    type="time" 
+                    [(ngModel)]="day.opensAt" 
+                    class="bg-barber-bg border border-barber-border rounded-xl px-3 py-1.5 text-sm font-display font-bold text-barber-black focus:outline-none focus:border-barber-black focus:ring-1 focus:ring-barber-black transition-all shadow-sm w-28 text-center"
+                  />
+                  <span class="text-xs font-semibold text-barber-mute uppercase">às</span>
+                  <input 
+                    type="time" 
+                    [(ngModel)]="day.closesAt" 
+                    class="bg-barber-bg border border-barber-border rounded-xl px-3 py-1.5 text-sm font-display font-bold text-barber-black focus:outline-none focus:border-barber-black focus:ring-1 focus:ring-barber-black transition-all shadow-sm w-28 text-center"
+                  />
+                </div>
+              } @else {
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold text-barber-mute bg-barber-bg border border-barber-border">
+                  <span class="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+                  <span>Fechado o dia todo</span>
+                </div>
+              }
+            </div>
+
+          </div>
+        }
+      </div>
+    }
+  </div>
+</main>

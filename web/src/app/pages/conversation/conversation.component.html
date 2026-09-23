@@ -1,29 +1,92 @@
-<main class="content">
-  <div class="page-head">
-    <div>
-      <h1>Conversa</h1>
-      @if (customerPhone()) {
-        <p class="muted">Cliente: {{ customerPhone() }}</p>
-      }
-    </div>
-    <a routerLink="/appointments" class="back-link">← Agendamentos</a>
+<main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-8">
+  <!-- Back Button & Header -->
+  <div class="mb-6 flex items-center justify-between">
+    <a 
+      routerLink="/appointments" 
+      class="inline-flex items-center gap-2 bg-white hover:bg-gray-50 border border-barber-border hover:border-barber-black text-barber-black px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all">
+      <i class="ph ph-arrow-left text-base"></i>
+      <span>Voltar aos Agendamentos</span>
+    </a>
   </div>
 
-  @if (loading()) {
-    <p class="empty">Carregando...</p>
-  } @else if (messages().length === 0) {
-    <p class="empty">Sem mensagens.</p>
-  } @else {
-    <div class="card">
-      <div class="chat">
+  <!-- Chat Frame -->
+  <div class="bg-white border border-barber-border rounded-2xl shadow-sm overflow-hidden flex flex-col">
+    <!-- Chat Header -->
+    <div class="p-5 border-b border-barber-border flex items-center justify-between">
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-xl bg-barber-black text-white flex items-center justify-center text-lg shadow-sm">
+          <i class="ph ph-user text-xl"></i>
+        </div>
+        <div>
+          <h2 class="font-display font-bold text-lg text-barber-black leading-tight">
+            {{ formatPhone(customerPhone()) }}
+          </h2>
+          <div class="flex items-center gap-1.5 text-xs text-barber-mute mt-0.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Canal de Mensagens • Conversa com IA</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-barber-accent_light text-barber-accent">
+        <i class="ph-fill ph-magic-wand"></i>
+        <span>IA Ativa</span>
+      </div>
+    </div>
+
+    <!-- Messages Body -->
+    @if (loading()) {
+      <div class="p-16 text-center text-barber-mute">
+        <i class="ph ph-circle-notch text-2xl animate-spin mb-2 inline-block"></i>
+        <p class="text-sm font-medium">Carregando conversa...</p>
+      </div>
+    } @else if (messages().length === 0) {
+      <div class="p-16 text-center text-barber-mute">
+        <i class="ph ph-chat-slash text-3xl mb-2 inline-block"></i>
+        <h3 class="font-display font-bold text-base text-barber-black mb-1">Nenhuma mensagem registrada</h3>
+        <p class="text-xs">Não há mensagens armazenadas para este agendamento.</p>
+      </div>
+    } @else {
+      <div class="p-6 bg-[#FAFAFA] min-h-[460px] max-h-[620px] overflow-y-auto space-y-4">
         @for (m of messages(); track $index) {
-          <div class="msg" [class.mine]="m.role === 'Assistant'" [class.theirs]="m.role === 'User'">
-            <div class="sender">{{ m.role === 'Assistant' ? 'Bot' : 'Cliente' }}</div>
-            <div class="bubble">{{ m.content }}</div>
-            <div class="time">{{ m.createdAt | date:'dd/MM HH:mm' }}</div>
+          <div 
+            class="flex flex-col max-w-[80%]"
+            [class.self-start]="m.role === 'Assistant'"
+            [class.self-end]="m.role === 'User'"
+            [class.items-end]="m.role === 'User'">
+            
+            <span class="text-[11px] font-semibold text-barber-mute mb-1 px-1">
+              {{ m.role === 'Assistant' ? 'Assistente Virtual' : 'Cliente' }}
+            </span>
+
+            <div 
+              class="p-4 rounded-2xl text-sm leading-relaxed shadow-sm"
+              [class.bg-white]="m.role === 'Assistant'"
+              [class.text-barber-black]="m.role === 'Assistant'"
+              [class.border]="m.role === 'Assistant'"
+              [class.border-barber-border]="m.role === 'Assistant'"
+              [class.rounded-tl-sm]="m.role === 'Assistant'"
+              [class.bg-barber-black]="m.role === 'User'"
+              [class.text-white]="m.role === 'User'"
+              [class.rounded-tr-sm]="m.role === 'User'">
+              {{ m.content }}
+            </div>
+
+            <div class="flex items-center gap-1 text-[11px] text-barber-mute mt-1 px-1">
+              <span>{{ m.createdAt | date:'dd/MM HH:mm' }}</span>
+              @if (m.role === 'User') {
+                <i class="ph ph-checks text-xs text-barber-accent"></i>
+              }
+            </div>
           </div>
         }
       </div>
-    </div>
-  }
+
+      <!-- Footer Info -->
+      <div class="p-3.5 bg-white border-t border-barber-border text-center text-xs text-barber-mute flex items-center justify-center gap-1.5">
+        <i class="ph-fill ph-shield-check text-emerald-600 text-sm"></i>
+        <span>Atendimento automático conduzido pela inteligência artificial com confirmação determinística.</span>
+      </div>
+    }
+  </div>
 </main>

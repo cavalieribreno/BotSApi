@@ -1,59 +1,37 @@
-# Web
+# BotSaaS — Painel Web (Frontend)
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.19.
+Painel administrativo e operacional para donos e recepcionistas, construído em **Angular 21** (Standalone Components, Signals, Zoneless).
 
-## Development server
+## Funcionalidades da Interface
 
-To start a local development server, run:
+- **Grade de Cadeiras Executiva (`/appointments`):**
+  - Visualização de horários ($08:00$ às $19:00$) $\times$ profissionais em colunas.
+  - Suporte a múltiplos agendamentos no mesmo slot de hora sem sobreposição.
+  - Alternância fluida para **Lista Cronológica**.
+  - Navegador de datas (`‹ Hoje, DD Mês ›`) com avanço e recuo diário.
+  - Dropdowns executivos customizados para filtro por Profissional e Status.
+  - Modal de detalhes do agendamento com histórico de status e link direto para a conversa com o cliente.
+- **Gestão de Equipe (`/team`):**
+  - Cadastro, edição inline e alternância de status de profissionais (`Ativo`, `Pausa/Férias`, `Inativo`).
+- **Configurações & Horários de Funcionamento (`/settings`):**
+  - Definição da grade semanal com abertura, fechamento e dias fechados, com cópia rápida para dias úteis.
+- **Histórico da Conversa (`/conversations/:id`):**
+  - Visualização da conversa de chat que originou o agendamento.
+- **Autenticação (`/login`):**
+  - Login seguro via JWT com persistência e interceptor HTTP automático (`Bearer`).
 
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+## Execução em Desenvolvimento
 
 ```bash
-ng build
+npm install
+npm start # ou ng serve
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Acesse em `http://localhost:4200`. A API backend (.NET) deve estar rodando na porta 5069.
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## Build de Produção
 
 ```bash
-ng test
+npm run build
 ```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Os artefatos compilados serão gerados no diretório `dist/web`.

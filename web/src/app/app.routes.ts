@@ -21,5 +21,6 @@ export const routes: Routes = [
       { path: 'settings', component: SettingsComponent },
       { path: '', redirectTo: 'appointments', pathMatch: 'full' }
     ]
-  }
+  },
+  { path: '**', redirectTo: 'appointments' }
 ];

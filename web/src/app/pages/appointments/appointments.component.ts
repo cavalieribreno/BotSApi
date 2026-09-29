@@ -25,6 +25,23 @@ export class AppointmentsComponent implements OnInit {
   professionalFilter = signal<string>('All');
   searchTerm = signal<string>('');
 
+  // Modal de Agendamento Manual (Grid Click & Global Button)
+  isBookingModalOpen = signal(false);
+  bookingLoading = signal(false);
+  bookingError = signal('');
+  
+  bookingProfessionalId = signal<string>('');
+  bookingDate = signal<string>('');
+  bookingHour = signal<string>('08:00');
+  bookingCustomerName = signal<string>('');
+  bookingCustomerPhone = signal<string>('');
+  bookingServiceName = signal<string>('Corte de Cabelo');
+
+  bookingProfessional = computed(() => {
+    const id = this.bookingProfessionalId();
+    return this.professionals().find(p => p.id === id) || null;
+  });
+
   readonly gridHours: string[] = [
     '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', 
     '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
@@ -39,18 +56,29 @@ export class AppointmentsComponent implements OnInit {
     this.load();
   }
 
-  load(): void {
-    this.loading.set(true);
-    this.error.set('');
+  formatDateIso(d: Date): string {
+    const year = d.getFullYear();
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
 
+  load(): void {
     // Load active professionals
     this.professionalService.getProfessionals('Active').subscribe({
       next: pros => this.professionals.set(pros),
       error: () => {}
     });
 
-    // Load appointments
-    this.service.getAppointments().subscribe({
+    this.loadAppointments();
+  }
+
+  loadAppointments(): void {
+    this.loading.set(true);
+    this.error.set('');
+
+    const dateStr = this.formatDateIso(this.selectedDate());
+    this.service.getAppointments(dateStr).subscribe({
       next: data => {
         // Sort chronologically
         data.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
@@ -60,6 +88,167 @@ export class AppointmentsComponent implements OnInit {
       error: () => {
         this.error.set('Não foi possível carregar os agendamentos.');
         this.loading.set(false);
+      }
+    });
+  }
+
+  openBookingModal(professionalId?: string, hourStr?: string): void {
+    let proId = professionalId;
+    if (!proId && this.professionals().length > 0) {
+      proId = this.professionals()[0].id;
+    }
+    this.bookingProfessionalId.set(proId || '');
+    this.bookingDate.set(this.formatDateIso(this.selectedDate()));
+
+    if (hourStr && proId) {
+      const existing = this.getAppointmentsForSlot(proId, hourStr);
+      const hasOnHour = existing.some(a => new Date(a.scheduledAt).getMinutes() === 0);
+      if (hasOnHour) {
+        const hourPart = hourStr.split(':')[0];
+        this.bookingHour.set(`${hourPart}:30`);
+      } else {
+        this.bookingHour.set(hourStr);
+      }
+    } else if (hourStr) {
+      this.bookingHour.set(hourStr);
+    } else {
+      this.bookingHour.set('09:00');
+    }
+
+    this.bookingCustomerName.set('');
+    this.bookingCustomerPhone.set('');
+    this.bookingServiceName.set('Corte de Cabelo');
+    this.bookingError.set('');
+    this.bookingLoading.set(false);
+    this.isBookingProDropdownOpen.set(false);
+    this.isBookingHourDropdownOpen.set(false);
+    this.isBookingModalOpen.set(true);
+  }
+
+  readonly availableTimeSlots: string[] = [
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', 
+    '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', 
+    '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', 
+    '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'
+  ];
+
+  isBookingProDropdownOpen = signal(false);
+  isBookingHourDropdownOpen = signal(false);
+
+  toggleBookingProDropdown(): void {
+    this.isBookingProDropdownOpen.update(v => !v);
+    if (this.isBookingProDropdownOpen()) {
+      this.isBookingHourDropdownOpen.set(false);
+    }
+  }
+
+  selectBookingProfessional(proId: string): void {
+    this.bookingProfessionalId.set(proId);
+    this.isBookingProDropdownOpen.set(false);
+  }
+
+  toggleBookingHourDropdown(): void {
+    this.isBookingHourDropdownOpen.update(v => !v);
+    if (this.isBookingHourDropdownOpen()) {
+      this.isBookingProDropdownOpen.set(false);
+    }
+  }
+
+  selectBookingHour(hour: string): void {
+    this.bookingHour.set(hour);
+    this.isBookingHourDropdownOpen.set(false);
+  }
+
+  onHourInputChange(val: string): void {
+    let clean = val.replace(/[^0-9:]/g, '');
+    if (clean.length === 4 && !clean.includes(':')) {
+      clean = `${clean.slice(0, 2)}:${clean.slice(2)}`;
+    }
+    this.bookingHour.set(clean);
+  }
+
+  closeBookingModal(): void {
+    this.isBookingModalOpen.set(false);
+    this.isBookingProDropdownOpen.set(false);
+    this.isBookingHourDropdownOpen.set(false);
+    this.bookingError.set('');
+  }
+
+  submitBooking(): void {
+    const proId = this.bookingProfessionalId();
+    if (!proId) {
+      this.bookingError.set('Por favor, selecione um profissional.');
+      return;
+    }
+
+    const dateStr = this.bookingDate().trim();
+    if (!dateStr) {
+      this.bookingError.set('Por favor, informe a data.');
+      return;
+    }
+
+    const rawHour = this.bookingHour().trim();
+    if (!rawHour) {
+      this.bookingError.set('Por favor, informe o horário.');
+      return;
+    }
+
+    // Auto-normalize formats like "8:27" or "08:27"
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+    const match = rawHour.match(timeRegex);
+    if (!match) {
+      this.bookingError.set('Por favor, informe um horário válido no formato HH:mm (ex: 08:27).');
+      return;
+    }
+
+    const normalizedHour = `${match[1].padStart(2, '0')}:${match[2]}`;
+
+    const name = this.bookingCustomerName().trim();
+    if (!name) {
+      this.bookingError.set('Por favor, informe o nome do cliente.');
+      return;
+    }
+
+    const phone = this.bookingCustomerPhone().trim();
+    if (!phone) {
+      this.bookingError.set('Por favor, informe o telefone do cliente.');
+      return;
+    }
+
+    const service = this.bookingServiceName().trim();
+    if (!service) {
+      this.bookingError.set('Por favor, informe o serviço.');
+      return;
+    }
+
+    const scheduledAt = `${dateStr}T${normalizedHour}:00`;
+
+    this.bookingLoading.set(true);
+    this.bookingError.set('');
+
+    this.service.createAppointment({
+      professionalId: proId,
+      serviceName: service,
+      customerName: name,
+      customerPhone: phone,
+      scheduledAt: scheduledAt
+    }).subscribe({
+      next: () => {
+        this.bookingLoading.set(false);
+        this.closeBookingModal();
+        const bookedDate = new Date(`${dateStr}T00:00:00`);
+        if (!isNaN(bookedDate.getTime())) {
+          this.selectedDate.set(bookedDate);
+        }
+        this.loadAppointments();
+      },
+      error: (err) => {
+        this.bookingLoading.set(false);
+        let msg = 'Não foi possível concluir o agendamento.';
+        if (err.error && err.error.error) {
+          msg = err.error.error;
+        }
+        this.bookingError.set(msg);
       }
     });
   }
@@ -114,16 +303,19 @@ export class AppointmentsComponent implements OnInit {
     const d = new Date(this.selectedDate());
     d.setDate(d.getDate() - 1);
     this.selectedDate.set(d);
+    this.loadAppointments();
   }
 
   nextDay(): void {
     const d = new Date(this.selectedDate());
     d.setDate(d.getDate() + 1);
     this.selectedDate.set(d);
+    this.loadAppointments();
   }
 
   goToToday(): void {
     this.selectedDate.set(new Date());
+    this.loadAppointments();
   }
 
   // Agendamentos da data selecionada
@@ -197,7 +389,7 @@ export class AppointmentsComponent implements OnInit {
 
   changeStatus(id: string, status: string): void {
     this.service.updateStatus(id, status).subscribe({
-      next: () => this.load(),
+      next: () => this.loadAppointments(),
       error: () => this.error.set('Não foi possível atualizar o status. Tente novamente.')
     });
   }

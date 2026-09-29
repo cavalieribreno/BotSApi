@@ -16,30 +16,40 @@
   <!-- BARRA DE CONTROLES: MODOS DE VISÃO & FILTROS -->
   <div class="bg-white border border-barber-border rounded-2xl p-3 shadow-xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
     
-    <!-- Lado Esquerdo: Alternador de Visão -->
-    <div class="flex items-center p-1 bg-zinc-100 rounded-xl border border-zinc-200/80">
-      <button 
-        (click)="setViewMode('grid')" 
-        [class.bg-white]="viewMode() === 'grid'"
-        [class.text-barber-black]="viewMode() === 'grid'"
-        [class.shadow-xs]="viewMode() === 'grid'"
-        [class.font-bold]="viewMode() === 'grid'"
-        [class.text-barber-mute]="viewMode() !== 'grid'"
-        class="px-3.5 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
-        <i class="ph ph-squares-four text-sm"></i>
-        <span>Cadeiras (Grid)</span>
-      </button>
+    <!-- Lado Esquerdo: Alternador de Visão + Botão Novo Agendamento -->
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="flex items-center p-1 bg-zinc-100 rounded-xl border border-zinc-200/80">
+        <button 
+          (click)="setViewMode('grid')" 
+          [class.bg-white]="viewMode() === 'grid'"
+          [class.text-barber-black]="viewMode() === 'grid'"
+          [class.shadow-xs]="viewMode() === 'grid'"
+          [class.font-bold]="viewMode() === 'grid'"
+          [class.text-barber-mute]="viewMode() !== 'grid'"
+          class="px-3.5 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
+          <i class="ph ph-squares-four text-sm"></i>
+          <span>Cadeiras (Grid)</span>
+        </button>
+
+        <button 
+          (click)="setViewMode('list')" 
+          [class.bg-white]="viewMode() === 'list'"
+          [class.text-barber-black]="viewMode() === 'list'"
+          [class.shadow-xs]="viewMode() === 'list'"
+          [class.font-bold]="viewMode() === 'list'"
+          [class.text-barber-mute]="viewMode() !== 'list'"
+          class="px-3.5 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
+          <i class="ph ph-list-dashes text-sm"></i>
+          <span>Lista Cronológica</span>
+        </button>
+      </div>
 
       <button 
-        (click)="setViewMode('list')" 
-        [class.bg-white]="viewMode() === 'list'"
-        [class.text-barber-black]="viewMode() === 'list'"
-        [class.shadow-xs]="viewMode() === 'list'"
-        [class.font-bold]="viewMode() === 'list'"
-        [class.text-barber-mute]="viewMode() !== 'list'"
-        class="px-3.5 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
-        <i class="ph ph-list-dashes text-sm"></i>
-        <span>Lista Cronológica</span>
+        type="button"
+        (click)="openBookingModal()"
+        class="px-3.5 py-1.5 bg-barber-black hover:bg-zinc-800 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer">
+        <i class="ph ph-plus text-xs font-bold"></i>
+        <span>Novo Agendamento</span>
       </button>
     </div>
 
@@ -311,12 +321,18 @@
                                 </div>
                                 <div class="flex items-center justify-between mt-2 pt-1 border-t border-emerald-200/60">
                                   <span class="text-xs text-emerald-900 font-bold">Às {{ apt.scheduledAt | date:'HH:mm' }}</span>
-                                  <a 
-                                    [routerLink]="['/conversations', apt.conversationId]"
-                                    class="text-xs font-bold text-emerald-900 hover:text-emerald-950 hover:underline flex items-center gap-1">
-                                    <i class="ph ph-chat-circle-dots"></i>
-                                    <span>Ver Chat</span>
-                                  </a>
+                                  @if (apt.conversationId) {
+                                    <a 
+                                      [routerLink]="['/conversations', apt.conversationId]"
+                                      class="text-xs font-bold text-emerald-900 hover:text-emerald-950 hover:underline flex items-center gap-1">
+                                      <i class="ph ph-chat-circle-dots"></i>
+                                      <span>Ver Chat</span>
+                                    </a>
+                                  } @else {
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100/70 text-emerald-800 border border-emerald-200">
+                                      Balcão
+                                    </span>
+                                  }
                                 </div>
                               </div>
                             }
@@ -336,14 +352,29 @@
                               </div>
                             }
                           }
+
+                          <!-- Botão para adicionar outro agendamento neste horário (ex: intervalo de 30min) -->
+                          <button 
+                            type="button"
+                            (click)="openBookingModal(p.id, hour)"
+                            class="w-full py-1 text-[11px] font-semibold text-zinc-400 hover:text-zinc-800 hover:bg-zinc-50 rounded-lg border border-dashed border-zinc-200 hover:border-zinc-300 flex items-center justify-center gap-1 transition-all cursor-pointer"
+                            title="Adicionar outro agendamento neste horário (ex: intervalo de 30min)">
+                            <i class="ph ph-plus text-xs"></i>
+                            <span>Adicionar horário</span>
+                          </button>
                         </div>
                       } @else {
-                        <!-- Slot Vazio -->
-                        <div class="h-full rounded-xl border border-dashed border-transparent hover:border-zinc-300 flex items-center justify-center transition-all group min-h-[48px]">
-                          <span class="text-xs font-semibold text-transparent group-hover:text-zinc-400 transition-colors">
+                        <!-- Slot Vazio (Clicável para Agendamento Manual) -->
+                        <button 
+                          type="button"
+                          (click)="openBookingModal(p.id, hour)"
+                          class="w-full h-full min-h-[48px] rounded-xl border border-dashed border-zinc-200 hover:border-zinc-400 hover:bg-zinc-50/80 flex items-center justify-center transition-all group cursor-pointer"
+                          title="Clique para agendar neste horário">
+                          <span class="text-xs font-semibold text-zinc-400 group-hover:text-zinc-700 flex items-center gap-1 transition-colors">
+                            <i class="ph ph-plus text-xs"></i>
                             Livre
                           </span>
-                        </div>
+                        </button>
                       }
                     }
 
@@ -428,12 +459,18 @@
                   </span>
                 }
 
-                <a 
-                  [routerLink]="['/conversations', a.conversationId]"
-                  class="p-1.5 text-zinc-400 hover:text-zinc-800 rounded-lg hover:bg-zinc-100 transition-colors"
-                  title="Ver conversa no chat">
-                  <i class="ph ph-chat-circle-dots text-base"></i>
-                </a>
+                @if (a.conversationId) {
+                  <a 
+                    [routerLink]="['/conversations', a.conversationId]"
+                    class="p-1.5 text-zinc-400 hover:text-zinc-800 rounded-lg hover:bg-zinc-100 transition-colors"
+                    title="Ver conversa no chat">
+                    <i class="ph ph-chat-circle-dots text-base"></i>
+                  </a>
+                } @else {
+                  <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-zinc-100 text-zinc-600 border border-zinc-200">
+                    Balcão
+                  </span>
+                }
               </div>
             </div>
           }
@@ -442,6 +479,225 @@
       </div>
     }
 
+  }
+
+  <!-- MODAL DE AGENDAMENTO MANUAL -->
+  @if (isBookingModalOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+      <div class="bg-white rounded-2xl border border-zinc-200 shadow-2xl w-full max-w-md overflow-visible relative">
+        
+        <!-- Header do Modal -->
+        <div class="px-6 py-4 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between rounded-t-2xl">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-barber-black text-white flex items-center justify-center">
+              <i class="ph ph-calendar-plus text-base"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-barber-black font-display">Novo Agendamento</h3>
+              <p class="text-xs text-zinc-500">Agendamento manual de balcão</p>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            (click)="closeBookingModal()" 
+            class="text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer p-1">
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        <!-- Feedback de Erro do Modal -->
+        @if (bookingError()) {
+          <div class="mx-6 mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+            <i class="ph-fill ph-warning-circle text-sm shrink-0"></i>
+            <span>{{ bookingError() }}</span>
+          </div>
+        }
+
+        <!-- Formulário -->
+        <form (ngSubmit)="submitBooking()" class="p-6 space-y-4">
+          <!-- Seleção Customizada de Profissional (Mesmo Design Executivo) -->
+          <div>
+            <label class="block text-xs font-bold text-zinc-700 mb-1">Profissional *</label>
+            <div class="relative">
+              <button 
+                type="button"
+                (click)="toggleBookingProDropdown()" 
+                class="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-zinc-50 border border-zinc-300 text-xs font-semibold text-barber-black rounded-xl cursor-pointer transition-all shadow-2xs">
+                <div class="flex items-center gap-2 truncate">
+                  @if (bookingProfessional(); as pro) {
+                    <span class="w-5 h-5 rounded-md bg-zinc-100 text-zinc-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+                      {{ pro.name.charAt(0).toUpperCase() }}
+                    </span>
+                    <span class="truncate font-semibold">{{ pro.name }}</span>
+                  } @else {
+                    <span class="text-zinc-400">Selecione um profissional...</span>
+                  }
+                </div>
+                <i class="ph ph-caret-down text-zinc-400 text-xs transition-transform" [class.rotate-180]="isBookingProDropdownOpen()"></i>
+              </button>
+
+              @if (isBookingProDropdownOpen()) {
+                <div class="fixed inset-0 z-40" (click)="isBookingProDropdownOpen.set(false)"></div>
+                <div class="absolute left-0 right-0 mt-1.5 bg-white rounded-xl shadow-lg border border-zinc-200/80 py-1.5 z-50 animate-in fade-in duration-100 max-h-52 overflow-y-auto">
+                  @for (p of professionals(); track p.id) {
+                    <button 
+                      type="button"
+                      (click)="selectBookingProfessional(p.id)" 
+                      class="w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-zinc-50 transition-colors cursor-pointer"
+                      [class.text-barber-black]="bookingProfessionalId() === p.id"
+                      [class.font-bold]="bookingProfessionalId() === p.id"
+                      [class.bg-zinc-50]="bookingProfessionalId() === p.id">
+                      <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-md bg-zinc-100 text-zinc-700 text-[10px] font-bold flex items-center justify-center">
+                          {{ p.name.charAt(0).toUpperCase() }}
+                        </span>
+                        <span class="truncate">{{ p.name }}</span>
+                      </div>
+                      @if (bookingProfessionalId() === p.id) {
+                        <i class="ph ph-check text-xs font-bold text-barber-black"></i>
+                      }
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Data e Horário (Grid cols 2) -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-zinc-700 mb-1">Data *</label>
+              <input 
+                type="date" 
+                [ngModel]="bookingDate()"
+                (ngModelChange)="bookingDate.set($event)"
+                name="bookingDate"
+                required
+                class="w-full px-3 py-2 text-xs bg-white border border-zinc-300 rounded-xl text-barber-black focus:outline-none focus:border-zinc-950 font-medium"
+              />
+            </div>
+
+            <!-- Horário Híbrido (Digitação Livre + Sugestões) -->
+            <div>
+              <label class="block text-xs font-bold text-zinc-700 mb-1">Horário (ex: 08:27) *</label>
+              <div class="relative">
+                <div class="flex items-center bg-white border border-zinc-300 rounded-xl overflow-hidden focus-within:border-zinc-950 transition-all shadow-2xs">
+                  <div class="pl-3 pr-1 text-zinc-400 flex items-center justify-center">
+                    <i class="ph ph-clock text-sm"></i>
+                  </div>
+                  <input 
+                    type="text" 
+                    [ngModel]="bookingHour()"
+                    (ngModelChange)="onHourInputChange($event)"
+                    name="bookingHour"
+                    placeholder="08:00"
+                    maxlength="5"
+                    class="w-full py-2 px-2 text-xs font-bold text-barber-black focus:outline-none bg-transparent"
+                  />
+                  <button 
+                    type="button"
+                    (click)="toggleBookingHourDropdown()"
+                    class="px-2.5 py-2 text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer border-l border-zinc-200"
+                    title="Ver horários sugeridos">
+                    <i class="ph ph-caret-down text-xs transition-transform" [class.rotate-180]="isBookingHourDropdownOpen()"></i>
+                  </button>
+                </div>
+
+                @if (isBookingHourDropdownOpen()) {
+                  <div class="fixed inset-0 z-40" (click)="isBookingHourDropdownOpen.set(false)"></div>
+                  <div class="absolute left-0 right-0 mt-1.5 bg-white rounded-xl shadow-lg border border-zinc-200/80 py-1.5 z-50 animate-in fade-in duration-100 max-h-52 overflow-y-auto">
+                    <div class="px-3 py-1 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Horários Sugeridos</div>
+                    @for (slot of availableTimeSlots; track slot) {
+                      <button 
+                        type="button"
+                        (click)="selectBookingHour(slot)" 
+                        class="w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-zinc-50 transition-colors cursor-pointer"
+                        [class.text-barber-black]="bookingHour() === slot"
+                        [class.font-bold]="bookingHour() === slot"
+                        [class.bg-zinc-50]="bookingHour() === slot">
+                        <div class="flex items-center gap-2">
+                          <i class="ph ph-clock text-zinc-400 text-xs"></i>
+                          <span>{{ slot }}</span>
+                        </div>
+                        @if (bookingHour() === slot) {
+                          <i class="ph ph-check text-xs font-bold text-barber-black"></i>
+                        }
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Nome do Cliente -->
+          <div>
+            <label class="block text-xs font-bold text-zinc-700 mb-1">Nome do Cliente *</label>
+            <input 
+              type="text" 
+              [ngModel]="bookingCustomerName()"
+              (ngModelChange)="bookingCustomerName.set($event)"
+              name="customerName"
+              placeholder="Ex: João da Silva"
+              required
+              class="w-full px-3 py-2 text-xs bg-white border border-zinc-300 rounded-xl text-barber-black focus:outline-none focus:border-zinc-950 font-medium"
+            />
+          </div>
+
+          <!-- Telefone / WhatsApp -->
+          <div>
+            <label class="block text-xs font-bold text-zinc-700 mb-1">Telefone / WhatsApp *</label>
+            <input 
+              type="text" 
+              [ngModel]="bookingCustomerPhone()"
+              (ngModelChange)="bookingCustomerPhone.set($event)"
+              name="customerPhone"
+              placeholder="Ex: (11) 98765-4321"
+              required
+              class="w-full px-3 py-2 text-xs bg-white border border-zinc-300 rounded-xl text-barber-black focus:outline-none focus:border-zinc-950 font-medium"
+            />
+          </div>
+
+          <!-- Serviço -->
+          <div>
+            <label class="block text-xs font-bold text-zinc-700 mb-1">Serviço *</label>
+            <input 
+              type="text" 
+              [ngModel]="bookingServiceName()"
+              (ngModelChange)="bookingServiceName.set($event)"
+              name="serviceName"
+              placeholder="Ex: Corte de Cabelo"
+              required
+              class="w-full px-3 py-2 text-xs bg-white border border-zinc-300 rounded-xl text-barber-black focus:outline-none focus:border-zinc-950 font-medium"
+            />
+          </div>
+
+          <!-- Botões de Ação -->
+          <div class="pt-2 flex items-center justify-end gap-2">
+            <button 
+              type="button" 
+              (click)="closeBookingModal()"
+              [disabled]="bookingLoading()"
+              class="px-4 py-2 text-xs font-semibold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 rounded-xl transition-all cursor-pointer disabled:opacity-50">
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              [disabled]="bookingLoading()"
+              class="px-4 py-2 bg-barber-black hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+              @if (bookingLoading()) {
+                <i class="ph ph-circle-notch animate-spin text-sm"></i>
+                <span>Agendando...</span>
+              } @else {
+                <i class="ph ph-check text-sm font-bold"></i>
+                <span>Confirmar Agendamento</span>
+              }
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
   }
 
 </main>

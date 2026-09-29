@@ -21,7 +21,3 @@ public class Professional
     public ProfessionalStatus Status { get; set; } = ProfessionalStatus.Active;
     public DateTime CreatedAt { get; set; }
 }
-
-public record CreateProfessionalRequest(string Name);
-public record UpdateProfessionalRequest(string Name, ProfessionalStatus Status);
-public record ProfessionalResponse(Guid Id, string Name, string Status);

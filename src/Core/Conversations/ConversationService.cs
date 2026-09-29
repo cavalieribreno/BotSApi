@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Globalization;
+using BotSaaS.Api.Core.Customers;
 using BotSaaS.Api.Shared.AI;
 using BotSaaS.Api.Shared.Database;
 using BotSaaS.Api.Shared.Results;
@@ -16,8 +17,9 @@ public class ConversationService : IConversationService
     private readonly IAiClient _aiClient;
     // IEnumerable: the DI injects ALL registered IChatTool implementations (one per tool). We route by Definition.Name.
     private readonly IEnumerable<IChatTool> _chatTools; 
+    private readonly ICustomerService _customerService;
     
-    public ConversationService(IDatabase databaseConnection, DbSession dbSession, IConversationRepository conversationRepository, IMessageRepository messageRepository, IAiClient aiClient, IEnumerable<IChatTool> chatTools)
+    public ConversationService(IDatabase databaseConnection, DbSession dbSession, IConversationRepository conversationRepository, IMessageRepository messageRepository, IAiClient aiClient, IEnumerable<IChatTool> chatTools, ICustomerService customerService)
     {
         _databaseConnection = databaseConnection;
         _dbSession = dbSession;
@@ -25,12 +27,23 @@ public class ConversationService : IConversationService
         _messageRepository = messageRepository;
         _aiClient = aiClient;
         _chatTools = chatTools;
+        _customerService = customerService;
     }
     public async Task<Result<string>> ProcessMessage(Guid companyId, string customerPhone, string messageText)
     {
         // survive across the two connection scopes (LLM runs between them)
         Guid conversationId;
         List<ChatMessage> chatHistory;
+
+        string? customerName = null;
+        Customer? customer = await _customerService.GetCustomerByPhone(companyId, customerPhone);
+        if (customer != null)
+        {
+            if (!string.IsNullOrWhiteSpace(customer.Name))
+            {
+                customerName = customer.Name;
+            }
+        }
 
         // 1) writes before the LLM - open, write, close
         try
@@ -97,6 +110,10 @@ public class ConversationService : IConversationService
             string dateContext = $"Hoje é {now.ToString("dddd, dd 'de' MMMM 'de' yyyy", ptBr)} ({now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}). " +
                 "Use esta data para resolver referências como 'hoje', 'amanhã', 'sexta que vem'. A data de um agendamento deve estar no formato AAAA-MM-DD.";
             string systemPrompt = $"{dateContext}\n\n{baseSystemPrompt}";
+            if (customerName != null)
+            {
+                systemPrompt = $"Cliente identificado: {customerName}. Cumprimente-o pelo nome e não pergunte seu nome novamente.\n\n{systemPrompt}";
+            }
 
             List<ToolDefinition> toolDefs = new List<ToolDefinition>();
             foreach(IChatTool tool in _chatTools)

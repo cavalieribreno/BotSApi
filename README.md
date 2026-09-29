@@ -39,10 +39,13 @@ Shared/        → base técnica neutra (Results, Security, Database, AI)
 dependência (mão única):  Channels / Modules  →  Capabilities  →  Core  →  Shared
 ```
 
-**Capability** = o que a plataforma sabe FAZER (agendar, pedir), reusável por vários nichos.
-**Module** = um TIPO de negócio (barbearia), que consome capabilities e pluga regras próprias.
+**Core** = kernel universal da plataforma (Auth, Users, Companies, Conversations, Customers) — o que QUALQUER negócio possui.
+**Capability** = capacidades e verticais transacionais reutilizáveis (Appointments, Professionals; futuro: Ordering, Products).
+**Module** = um TIPO de negócio (barbearia, clínica), que consome capabilities e pluga regras próprias.
 
 Decisões de design que guiam o código:
+
+- **Separação Core vs Capabilities (`Customer` vs `Professional`)** — `Customer` mora no `Core` porque todo negócio possui clientes (barbearia, delivery, consultório). `Professional` mora em `Capabilities/Professionals` porque é específico da vertical de prestação de serviços e agendamentos (um restaurante ou e-commerce não tem "profissionais" na comanda).
 
 - **Multi-tenant** por `CompanyId`, isolado via JWT nas rotas do dono (o tenant sai sempre do token).
   Num canal (sem JWT), o tenant é resolvido pela identidade do canal.
@@ -72,6 +75,7 @@ Decisões de design que guiam o código:
 - ✅ **Canal de envio neutro (`IChannelSender`)** — contrato em `Channels/Interfaces` implementado por `TelegramChannelSender` (Typed HttpClient via `IHttpClientFactory`); trocar para WhatsApp = nova implementação, zero mudança no lembrete
 - ✅ **Horário de funcionamento básico** — tabela `business_hours` por dia da semana (`opens_at`, `closes_at`, `is_closed`); validação no agendamento bloqueia datas passadas, dias fechados e horários fora de expediente; endpoints REST para consulta e edição + interface visual no painel
 - ✅ **Multi-Profissional (Equipe / Profissionais)** — gestão de profissionais por empresa (tabela `professionals`), vinculação obrigatória de profissional a cada agendamento (`professional_id`), disponibilidade anti-concorrência individual (dois profissionais atendem ao mesmo tempo sem conflito), consultas via `INNER JOIN`, e ferramentas da IA (`CreateAppointmentTool` com escolha de profissional e `GetProfessionalsTool` para a IA listar a equipe)
+- ✅ **Módulo de Clientes & Reconhecimento de Identidade** — tabela `customers` (`company_id`, `phone`, `name`) com isolamento por tenant e índice único `(company_id, phone)`; integração inteligente no `ConversationService` (o bot reconhece o cliente pelo número e o cumprimenta pelo nome); persistência automática da identidade ao confirmar agendamentos via `CreateAppointmentTool`; endpoints REST protegidos para a visão da recepção
 - 🔜 Webhook de WhatsApp, cobrança
 
 ## Endpoints
@@ -91,6 +95,8 @@ Decisões de design que guiam o código:
 | `GET`  | `/api/professionals` | Lista os profissionais da empresa, opcionalmente filtrando por status (requer Bearer; tenant-scoped) |
 | `GET`  | `/api/professionals/{id}` | Detalha um profissional específico por ID (requer Bearer; tenant-scoped) |
 | `PUT`  | `/api/professionals/{id}` | Atualiza dados e status de um profissional existente (requer Bearer; tenant-scoped) |
+| `GET`  | `/api/customers` | Lista os clientes da empresa do requisitante (requer Bearer; tenant-scoped) |
+| `GET`  | `/api/customers/{id}` | Detalha um cliente específico por ID (requer Bearer; tenant-scoped) |
 
 > O **canal de Telegram** roda como dois serviços em background: `TelegramPollingService` (escuta
 > mensagens do cliente, *long polling*) e `ReminderBackgroundService` (envia lembretes proativos via

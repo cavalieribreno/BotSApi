@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using BotSaaS.Api.Capabilities.Professionals;
 using BotSaaS.Api.Core.Conversations;
+using BotSaaS.Api.Core.Customers;
 using BotSaaS.Api.Shared.AI;
 using BotSaaS.Api.Shared.Results;
 
@@ -12,11 +13,13 @@ public class CreateAppointmentTool : IChatTool
 {
     private readonly IAppointmentService _appointmentService;
     private readonly IProfessionalService _professionalService;
+    private readonly ICustomerService _customerService;
 
-    public CreateAppointmentTool(IAppointmentService appointmentService, IProfessionalService professionalService)
+    public CreateAppointmentTool(IAppointmentService appointmentService, IProfessionalService professionalService, ICustomerService customerService)
     {
         _appointmentService = appointmentService;
         _professionalService = professionalService;
+        _customerService = customerService;
     }
 
     // tool definition
@@ -71,6 +74,8 @@ public class CreateAppointmentTool : IChatTool
         }
         // format from the parsed ScheduledAt (source of truth), pt-BR so the weekday reads in Portuguese
         Appointment appointment = result.Value!;
+        await _customerService.FindOrCreateCustomer(whoContext.CompanyId, whoContext.CustomerPhone, args.Nome);
+        
         string quando = appointment.ScheduledAt.ToString("dddd, dd/MM 'às' HH:mm", new CultureInfo("pt-BR"));
         return new ToolOutcome($"Pronto, {args.Nome}! Seu {args.Servico} com {professional.Name} ficou agendado para {quando}.", FinalResponse: true);
     }

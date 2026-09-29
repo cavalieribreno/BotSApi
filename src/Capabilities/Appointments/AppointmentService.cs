@@ -23,17 +23,11 @@ public class AppointmentService : IAppointmentService
         _dbSession = dbSession;
     }
 
-    // Builds a valid Appointment from primitives (parses "yyyy-MM-dd" + "HH:mm" into ScheduledAt, business-local naive time) and persists it.
-    public async Task<Result<Appointment>> CreateAppointment(Guid companyId, Guid conversationId, Guid professionalId, string serviceName, string customerName, string data, string hora)
+    // Builds a valid Appointment from request and persists it.
+    public async Task<Result<Appointment>> CreateAppointment(Guid companyId, CreateAppointmentRequest request, AppointmentOrigin origin, Guid? conversationId = null)
     {
-        // strict parse - if the model sent a bad date/time, fail cleanly instead of crashing
-        if (!DateTime.TryParseExact($"{data} {hora}", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime scheduledAt))
-        {
-            return Result<Appointment>.Failure("Data ou hora inválida");
-        }
-        
         // 1. Cannot book in the past
-        if (scheduledAt < DateTime.Now)
+        if (request.ScheduledAt < DateTime.Now)
         {
             return Result<Appointment>.Failure("Não é possível agendar em datas ou horários que já passaram.");
         }
@@ -43,7 +37,7 @@ public class AppointmentService : IAppointmentService
         await connection.OpenAsync();
 
         // 2. Validate operating hours for the requested day of week
-        BusinessHours? hours = await _companiesRepository.GetBusinessHours(companyId, scheduledAt.DayOfWeek);
+        BusinessHours? hours = await _companiesRepository.GetBusinessHours(companyId, request.ScheduledAt.DayOfWeek);
         if (hours is not null)
         {
             if (hours.IsClosed)
@@ -51,7 +45,7 @@ public class AppointmentService : IAppointmentService
                 return Result<Appointment>.Failure("Não funcionamos neste dia. Por favor, escolha outra data.");
             }
 
-            TimeSpan requestedTime = scheduledAt.TimeOfDay;
+            TimeSpan requestedTime = request.ScheduledAt.TimeOfDay;
             if (requestedTime < hours.OpensAt || requestedTime >= hours.ClosesAt)
             {
                 string opens = hours.OpensAt.ToString(@"hh\:mm");
@@ -59,6 +53,7 @@ public class AppointmentService : IAppointmentService
                 return Result<Appointment>.Failure($"Horário fora do expediente. Atendemos das {opens} às {closes}.");
             }
         }
+
         using DbTransaction transaction = await connection.BeginTransactionAsync();
         _dbSession.Transaction = transaction;
 
@@ -67,21 +62,25 @@ public class AppointmentService : IAppointmentService
             Id = Guid.NewGuid(),
             CompanyId = companyId,
             ConversationId = conversationId,
-            ProfessionalId = professionalId,
-            ServiceName = serviceName,
-            CustomerName = customerName,
-            ScheduledAt = scheduledAt,
+            ProfessionalId = request.ProfessionalId,
+            ServiceName = request.ServiceName,
+            CustomerName = request.CustomerName,
+            CustomerPhone = request.CustomerPhone,
+            ScheduledAt = request.ScheduledAt,
             Status = AppointmentStatus.Pending,
+            Origin = origin,
             CreatedAt = DateTime.UtcNow
         };
+
         try
         {
             await _companiesRepository.LockCompany(companyId);
-            if(!await _availabilityPolicy.IsSlotFree(companyId, professionalId, scheduledAt))
+            if (!await _availabilityPolicy.IsSlotFree(companyId, request.ProfessionalId, request.ScheduledAt))
             {
                 await transaction.RollbackAsync();
                 return Result<Appointment>.Conflict("Esse horário não está disponível.");
             }
+
             await _appointmentRepository.InsertAppointment(appointment);
             await transaction.CommitAsync();
             return Result<Appointment>.Success(appointment); 

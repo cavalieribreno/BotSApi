@@ -11,6 +11,7 @@ namespace BotSaaS.Api.Capabilities.Appointments;
 public class AppointmentController : ControllerBase
 {
     private readonly IAppointmentService _appointmentService;
+
     public AppointmentController(IAppointmentService appointmentService)
     {
         _appointmentService = appointmentService;
@@ -38,10 +39,54 @@ public class AppointmentController : ControllerBase
         foreach(Appointment appointment in appointments)
         {
             response.Add(new AppointmentResponse(
-                appointment.Id, appointment.CompanyId, appointment.ConversationId, appointment.ProfessionalId, appointment.ProfessionalName, appointment.ServiceName, appointment.CustomerName, appointment.ScheduledAt, appointment.Status.ToString(), appointment.CreatedAt
+                appointment.Id, appointment.CompanyId, appointment.ConversationId, appointment.ProfessionalId, appointment.ProfessionalName, appointment.ServiceName, appointment.CustomerName, appointment.CustomerPhone, appointment.ScheduledAt, appointment.Status.ToString(), appointment.Origin.ToString(), appointment.CreatedAt
             ));
         }
         return Ok(response);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateAppointment([FromBody] CreateAppointmentRequest request)
+    {
+        string? companyId = User.FindFirstValue("companyId");
+        if (!Guid.TryParse(companyId, out Guid companyGuid))
+        {
+            return Unauthorized(new { error = "Empresa inválida" });
+        }
+
+        Result<Appointment> result = await _appointmentService.CreateAppointment(
+            companyGuid,
+            request,
+            AppointmentOrigin.Manual
+        );
+
+        if (!result.IsSuccess)
+        {
+            if (result.ErrorType == ErrorType.Conflict)
+            {
+                return Conflict(new { error = result.Error });
+            }
+            return BadRequest(new { error = result.Error });
+        }
+
+        Appointment appointment = result.Value!;
+
+        AppointmentResponse response = new AppointmentResponse(
+            appointment.Id,
+            appointment.CompanyId,
+            appointment.ConversationId,
+            appointment.ProfessionalId,
+            appointment.ProfessionalName,
+            appointment.ServiceName,
+            appointment.CustomerName,
+            appointment.CustomerPhone,
+            appointment.ScheduledAt,
+            appointment.Status.ToString(),
+            appointment.Origin.ToString(),
+            appointment.CreatedAt
+        );
+
+        return Created($"/api/appointments/{appointment.Id}", response);
     }
 
     [HttpPatch("{id}/status")]

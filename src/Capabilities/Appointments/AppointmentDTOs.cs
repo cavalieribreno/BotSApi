@@ -1,16 +1,26 @@
 namespace BotSaaS.Api.Capabilities.Appointments;
 
-// Owner-facing view of an appointment. Status is the enum name (frontend localizes).
+// Reception/owner-facing request to manually book an appointment.
+public record CreateAppointmentRequest(
+    Guid ProfessionalId,
+    string ServiceName,
+    string CustomerName,
+    string CustomerPhone,
+    DateTime ScheduledAt);
+    
+// Owner-facing view of an appointment. Status and Origin are string names (frontend localizes).
 public record AppointmentResponse(
     Guid Id,
     Guid CompanyId,
-    Guid ConversationId,
+    Guid? ConversationId,
     Guid ProfessionalId,
     string ProfessionalName,
     string ServiceName,
     string CustomerName,
+    string CustomerPhone,
     DateTime ScheduledAt,
     string Status,
+    string Origin,
     DateTime CreatedAt);
 
 // Deserialized args of the registrar_agendamento tool call (the model's JSON, mapped to the domain).

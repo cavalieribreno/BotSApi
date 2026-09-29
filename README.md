@@ -76,6 +76,9 @@ Decisões de design que guiam o código:
 - ✅ **Horário de funcionamento básico** — tabela `business_hours` por dia da semana (`opens_at`, `closes_at`, `is_closed`); validação no agendamento bloqueia datas passadas, dias fechados e horários fora de expediente; endpoints REST para consulta e edição + interface visual no painel
 - ✅ **Multi-Profissional (Equipe / Profissionais)** — gestão de profissionais por empresa (tabela `professionals`), vinculação obrigatória de profissional a cada agendamento (`professional_id`), disponibilidade anti-concorrência individual (dois profissionais atendem ao mesmo tempo sem conflito), consultas via `INNER JOIN`, e ferramentas da IA (`CreateAppointmentTool` com escolha de profissional e `GetProfessionalsTool` para a IA listar a equipe)
 - ✅ **Módulo de Clientes & Reconhecimento de Identidade** — tabela `customers` (`company_id`, `phone`, `name`) com isolamento por tenant e índice único `(company_id, phone)`; integração inteligente no `ConversationService` (o bot reconhece o cliente pelo número e o cumprimenta pelo nome); persistência automática da identidade ao confirmar agendamentos via `CreateAppointmentTool`; endpoints REST protegidos para a visão da recepção
+- ✅ **Ciclo de Vida de Sessões & Expiração por Inatividade (12h)** — gerenciamento de sessões ativas (`is_active`, `closed_at`) na tabela `conversations` com encerramento automático após 12h de inatividade; impede que mensagens antigas poluam o contexto da IA e causem alucinações de datas passadas, preservando a identidade permanente do cliente via tabela `customers`
+- ✅ **Agendamento Manual pela Recepção & Modelagem de Origem** — endpoint `POST /api/appointments` (tenant-scoped) permitindo que a recepção crie agendamentos de balcão/telefone; modelagem com `origin` (`Bot` vs `Manual`), `customer_phone` autossuficiente e `conversation_id` opcional, desacoplando agendamentos do chat
+- ✅ **Script DDL Unificado do Banco de Dados** — arquivo `database/schema.sql` contendo o schema completo e fiel de todas as 8 tabelas e índices do MySQL para provisionamento rápido em qualquer ambiente
 - 🔜 Webhook de WhatsApp, cobrança
 
 ## Endpoints
@@ -86,6 +89,7 @@ Decisões de design que guiam o código:
 | `POST` | `/api/auth/login` | Autentica e devolve o JWT + o nome da empresa (white-label) |
 | `GET`  | `/api/me` | Identidade do requisitante (requer Bearer) |
 | `POST` | `/api/conversations` | Processa uma mensagem do cliente e devolve a resposta da IA (requer Bearer; entrada dev/token) |
+| `POST` | `/api/appointments` | Cria um agendamento manualmente pela recepção (requer Bearer; tenant-scoped) |
 | `GET`  | `/api/appointments` | Lista os agendamentos da empresa do requisitante (requer Bearer; a "visão do dono") |
 | `PATCH` | `/api/appointments/{id}/status` | Atualiza o status de um agendamento (requer Bearer; tenant-scoped) |
 | `GET`  | `/api/conversations/{id}/messages` | Mensagens de uma conversa (requer Bearer; tenant-scoped) — o chat por trás de um agendamento |

@@ -6,7 +6,9 @@ public class Conversation
     public Guid Id { get; set; }
     public Guid CompanyId { get; set; }
     public string CustomerPhone { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
+    public DateTime? ClosedAt { get; set; }
 }
 
 // Who sent a persisted message. Persistence discriminator (stored as INT in messages.role) - not an AI concept.

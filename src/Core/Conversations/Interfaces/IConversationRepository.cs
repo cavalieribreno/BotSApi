@@ -6,4 +6,5 @@ public interface IConversationRepository
     public Task InsertConversation(Conversation conversation);
     public Task<Conversation?> GetConversationByCompanyAndPhone(Guid companyId, string phone);
     public Task<Conversation?> GetConversationByIdAndCompany(Guid id, Guid companyId);
+    public Task CloseConversation(Guid id, Guid companyId);
 }

@@ -54,13 +54,31 @@ public class ConversationService : IConversationService
 
             Conversation? conversation = await _conversationRepository.GetConversationByCompanyAndPhone(companyId, customerPhone);
 
-            if(conversation == null)
+            if (conversation != null)
+            {
+                // Inactivity expiration: if last message (or conversation creation) was >12h ago, close and start fresh.
+                List<Message> existingMessages = await _messageRepository.GetMessagesByConversation(conversation.Id);
+                DateTime lastActivity = conversation.CreatedAt;
+                if (existingMessages.Count > 0)
+                {
+                    lastActivity = existingMessages[existingMessages.Count - 1].CreatedAt;
+                }
+
+                if (DateTime.UtcNow - lastActivity > TimeSpan.FromHours(12))
+                {
+                    await _conversationRepository.CloseConversation(conversation.Id, companyId);
+                    conversation = null;
+                }
+            }
+            
+            if (conversation == null)
             {
                 conversation = new Conversation
                 {
                     Id = Guid.NewGuid(),
                     CompanyId = companyId,
                     CustomerPhone = customerPhone,
+                    IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 };
                 await _conversationRepository.InsertConversation(conversation);

@@ -59,7 +59,14 @@ public class CreateAppointmentTool : IChatTool
             return new ToolOutcome($"Profissional '{args.Profissional}' não encontrado.", FinalResponse: true);
         }
 
-        Result<Appointment> result = await _appointmentService.CreateAppointment(whoContext.CompanyId, whoContext.ConversationId, professional.Id, args.Servico, args.Nome, args.Data, args.Hora);
+        if (!DateTime.TryParseExact($"{args.Data} {args.Hora}", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime scheduledAt))
+        {
+            return new ToolOutcome("Data ou hora inválida. Por favor, informe a data e hora desejada.", FinalResponse: true);
+        }
+
+        CreateAppointmentRequest createRequest = new CreateAppointmentRequest(professional.Id, args.Servico, args.Nome, whoContext.CustomerPhone, scheduledAt);
+
+        Result<Appointment> result = await _appointmentService.CreateAppointment(whoContext.CompanyId, createRequest, AppointmentOrigin.Bot, whoContext.ConversationId);
 
         if (!result.IsSuccess)
         {
@@ -69,7 +76,12 @@ public class CreateAppointmentTool : IChatTool
             }
             else
             {
-                return new ToolOutcome(result.Error ?? "Não foi possível concluir o agendamento.", FinalResponse: true);
+                string errorMessage = "Não foi possível concluir o agendamento.";
+                if (!string.IsNullOrWhiteSpace(result.Error))
+                {
+                    errorMessage = result.Error;
+                }
+                return new ToolOutcome(errorMessage, FinalResponse: true);
             }
         }
         // format from the parsed ScheduledAt (source of truth), pt-BR so the weekday reads in Portuguese

@@ -16,15 +16,25 @@ public class AppointmentRepository : IAppointmentRepository
     {
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
-        command.CommandText = "INSERT INTO appointments (id, company_id, conversation_id, professional_id, service_name, customer_name, scheduled_at, status, created_at) VALUES (@id, @company_id, @conversation_id, @professional_id, @service_name, @customer_name, @scheduled_at, @status, @created_at)";
+        command.CommandText = @"INSERT INTO appointments (id, company_id, conversation_id, professional_id, service_name, customer_name, customer_phone, scheduled_at, status, origin, created_at) 
+                                VALUES (@id, @company_id, @conversation_id, @professional_id, @service_name, @customer_name, @customer_phone, @scheduled_at, @status, @origin, @created_at)";
         command.AddParameter("@id", appointment.Id.ToString());
-        command.AddParameter("@company_id", appointment.CompanyId.ToString());       // FK, guid
-        command.AddParameter("@conversation_id", appointment.ConversationId.ToString()); // FK, guid
-        command.AddParameter("@professional_id", appointment.ProfessionalId.ToString()); // FK, guid
+        command.AddParameter("@company_id", appointment.CompanyId.ToString());
+
+        object conversationIdParam = DBNull.Value;
+        if (appointment.ConversationId.HasValue)
+        {
+            conversationIdParam = appointment.ConversationId.Value.ToString();
+        }
+        command.AddParameter("@conversation_id", conversationIdParam);
+
+        command.AddParameter("@professional_id", appointment.ProfessionalId.ToString());
         command.AddParameter("@service_name", appointment.ServiceName);
         command.AddParameter("@customer_name", appointment.CustomerName);
+        command.AddParameter("@customer_phone", appointment.CustomerPhone);
         command.AddParameter("@scheduled_at", appointment.ScheduledAt);
         command.AddParameter("@status", (int)appointment.Status);
+        command.AddParameter("@origin", (int)appointment.Origin);
         command.AddParameter("@created_at", appointment.CreatedAt);
 
         await command.ExecuteNonQueryAsync();
@@ -43,7 +53,7 @@ public class AppointmentRepository : IAppointmentRepository
         DateTime end = date.AddDays(1).ToDateTime(TimeOnly.MinValue);
 
         command.CommandText = @"SELECT ap.id, ap.company_id, ap.conversation_id, ap.professional_id, pr.name AS professional_name, 
-                                       ap.service_name, ap.customer_name, ap.scheduled_at, ap.status, ap.reminded_at, ap.created_at 
+                                       ap.service_name, ap.customer_name, ap.customer_phone, ap.scheduled_at, ap.status, ap.origin, ap.reminded_at, ap.created_at 
                                 FROM appointments ap
                                 INNER JOIN professionals pr ON ap.professional_id = pr.id
                                 WHERE ap.company_id = @company_id
@@ -58,18 +68,32 @@ public class AppointmentRepository : IAppointmentRepository
         using DbDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
+            Guid? conversationId = null;
+            if (reader["conversation_id"] != DBNull.Value)
+            {
+                conversationId = (Guid)reader["conversation_id"];
+            }
+
+            DateTime? remindedAt = null;
+            if (reader["reminded_at"] != DBNull.Value)
+            {
+                remindedAt = (DateTime)reader["reminded_at"];
+            }
+
             Appointment appointment = new Appointment
             {
                 Id = (Guid)reader["id"],
                 CompanyId = (Guid)reader["company_id"],
-                ConversationId = (Guid)reader["conversation_id"],
+                ConversationId = conversationId,
                 ProfessionalId = (Guid)reader["professional_id"],
                 ProfessionalName = (string)reader["professional_name"],
                 ServiceName = (string)reader["service_name"],
                 CustomerName = (string)reader["customer_name"],
+                CustomerPhone = (string)reader["customer_phone"],
                 ScheduledAt = (DateTime)reader["scheduled_at"],
                 Status = (AppointmentStatus)(int)reader["status"],
-                RemindedAt = reader["reminded_at"] == DBNull.Value ? null : (DateTime?)reader["reminded_at"],
+                Origin = (AppointmentOrigin)(int)reader["origin"],
+                RemindedAt = remindedAt,
                 CreatedAt = (DateTime)reader["created_at"]
             };
             appointments.Add(appointment);
@@ -77,8 +101,7 @@ public class AppointmentRepository : IAppointmentRepository
         return appointments;
     }
 
-    // All appointments of one customer (company + phone), soonest-first. Joins conversations because the
-    // phone lives there, not on the appointment - survives conversation rotation (same phone, new conversation).
+    // All appointments of one customer (company + phone), soonest-first.
     public async Task<List<Appointment>> GetAppointmentsByCustomer(Guid companyId, string customerPhone)
     {
         List<Appointment> appointments = new List<Appointment>();
@@ -86,11 +109,10 @@ public class AppointmentRepository : IAppointmentRepository
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
         command.CommandText = @"SELECT ap.id, ap.company_id, ap.conversation_id, ap.professional_id, pr.name AS professional_name, 
-                                       ap.service_name, ap.customer_name, ap.scheduled_at, ap.status, ap.reminded_at, ap.created_at
+                                       ap.service_name, ap.customer_name, ap.customer_phone, ap.scheduled_at, ap.status, ap.origin, ap.reminded_at, ap.created_at
                                 FROM appointments ap
-                                JOIN conversations cv ON ap.conversation_id = cv.id
                                 INNER JOIN professionals pr ON ap.professional_id = pr.id
-                                WHERE ap.company_id = @company_id AND cv.customer_phone = @customer_phone
+                                WHERE ap.company_id = @company_id AND ap.customer_phone = @customer_phone
                                 ORDER BY ap.scheduled_at";
         command.AddParameter("@company_id", companyId.ToString());
         command.AddParameter("@customer_phone", customerPhone);
@@ -98,18 +120,32 @@ public class AppointmentRepository : IAppointmentRepository
         using DbDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
+            Guid? conversationId = null;
+            if (reader["conversation_id"] != DBNull.Value)
+            {
+                conversationId = (Guid)reader["conversation_id"];
+            }
+
+            DateTime? remindedAt = null;
+            if (reader["reminded_at"] != DBNull.Value)
+            {
+                remindedAt = (DateTime)reader["reminded_at"];
+            }
+
             Appointment appointment = new Appointment
             {
                 Id = (Guid)reader["id"],
                 CompanyId = (Guid)reader["company_id"],
-                ConversationId = (Guid)reader["conversation_id"],
+                ConversationId = conversationId,
                 ProfessionalId = (Guid)reader["professional_id"],
                 ProfessionalName = (string)reader["professional_name"],
                 ServiceName = (string)reader["service_name"],
                 CustomerName = (string)reader["customer_name"],
+                CustomerPhone = (string)reader["customer_phone"],
                 ScheduledAt = (DateTime)reader["scheduled_at"],
                 Status = (AppointmentStatus)(int)reader["status"],
-                RemindedAt = reader["reminded_at"] == DBNull.Value ? null : (DateTime?)reader["reminded_at"],
+                Origin = (AppointmentOrigin)(int)reader["origin"],
+                RemindedAt = remindedAt,
                 CreatedAt = (DateTime)reader["created_at"]
             };
             appointments.Add(appointment);
@@ -154,9 +190,8 @@ public class AppointmentRepository : IAppointmentRepository
 
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
-        command.CommandText = @"SELECT ap.id, ap.company_id, ap.customer_name, ap.service_name, ap.scheduled_at, cv.customer_phone
+        command.CommandText = @"SELECT ap.id, ap.company_id, ap.customer_name, ap.service_name, ap.scheduled_at, ap.customer_phone
                                 FROM appointments ap
-                                JOIN conversations cv ON ap.conversation_id = cv.id
                                 WHERE ap.reminded_at IS NULL
                                   AND ap.status IN (@pending, @confirmed)
                                   AND ap.scheduled_at BETWEEN @windowStart AND @windowEnd

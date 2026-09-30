@@ -75,7 +75,7 @@ Decisões de design que guiam o código:
 - ✅ **Canal de envio neutro (`IChannelSender`)** — contrato em `Channels/Interfaces` implementado por `TelegramChannelSender` (Typed HttpClient via `IHttpClientFactory`); trocar para WhatsApp = nova implementação, zero mudança no lembrete
 - ✅ **Horário de funcionamento básico** — tabela `business_hours` por dia da semana (`opens_at`, `closes_at`, `is_closed`); validação no agendamento bloqueia datas passadas, dias fechados e horários fora de expediente; endpoints REST para consulta e edição + interface visual no painel
 - ✅ **Multi-Profissional (Equipe / Profissionais)** — gestão de profissionais por empresa (tabela `professionals`), vinculação obrigatória de profissional a cada agendamento (`professional_id`), disponibilidade anti-concorrência individual (dois profissionais atendem ao mesmo tempo sem conflito), consultas via `INNER JOIN`, e ferramentas da IA (`CreateAppointmentTool` com escolha de profissional e `GetProfessionalsTool` para a IA listar a equipe)
-- ✅ **Módulo de Clientes & Reconhecimento de Identidade** — tabela `customers` (`company_id`, `phone`, `name`) com isolamento por tenant e índice único `(company_id, phone)`; integração inteligente no `ConversationService` (o bot reconhece o cliente pelo número e o cumprimenta pelo nome); persistência automática da identidade ao confirmar agendamentos via `CreateAppointmentTool`; endpoints REST protegidos para a visão da recepção
+- ✅ **Mini-CRM & Gestão de Clientes (`/customers`)** — tabela `customers` (`company_id`, `phone`, `name`) com isolamento por tenant; reconhecimento de identidade pelo bot no chat; cadastro manual com sanitização e validação estrita de telefone (DDD válido e 10 a 11 dígitos); tela no painel em tabela executiva compacta com busca instantânea, links rápidos para WhatsApp/Telegram e modal de histórico de atendimentos passados e futuros
 - ✅ **Ciclo de Vida de Sessões & Expiração por Inatividade (12h)** — gerenciamento de sessões ativas (`is_active`, `closed_at`) na tabela `conversations` com encerramento automático após 12h de inatividade; impede que mensagens antigas poluam o contexto da IA e causem alucinações de datas passadas, preservando a identidade permanente do cliente via tabela `customers`
 - ✅ **Agendamento Manual pela Recepção & Modelagem de Origem** — endpoint `POST /api/appointments` (tenant-scoped) permitindo que a recepção crie agendamentos de balcão/telefone; modelagem com `origin` (`Bot` vs `Manual`), `customer_phone` autossuficiente e `conversation_id` opcional, desacoplando agendamentos do chat
 - ✅ **Script DDL Unificado do Banco de Dados** — arquivo `database/schema.sql` contendo o schema completo e fiel de todas as 8 tabelas e índices do MySQL para provisionamento rápido em qualquer ambiente
@@ -99,8 +99,10 @@ Decisões de design que guiam o código:
 | `GET`  | `/api/professionals` | Lista os profissionais da empresa, opcionalmente filtrando por status (requer Bearer; tenant-scoped) |
 | `GET`  | `/api/professionals/{id}` | Detalha um profissional específico por ID (requer Bearer; tenant-scoped) |
 | `PUT`  | `/api/professionals/{id}` | Atualiza dados e status de um profissional existente (requer Bearer; tenant-scoped) |
+| `POST` | `/api/customers` | Cadastra manualmente um cliente com validação estrita de telefone (requer Bearer; tenant-scoped) |
 | `GET`  | `/api/customers` | Lista os clientes da empresa do requisitante (requer Bearer; tenant-scoped) |
 | `GET`  | `/api/customers/{id}` | Detalha um cliente específico por ID (requer Bearer; tenant-scoped) |
+| `GET`  | `/api/appointments/customer?phone={phone}` | Lista o histórico de agendamentos de um cliente por telefone (requer Bearer; tenant-scoped) |
 
 > O **canal de Telegram** roda como dois serviços em background: `TelegramPollingService` (escuta
 > mensagens do cliente, *long polling*) e `ReminderBackgroundService` (envia lembretes proativos via
@@ -144,6 +146,7 @@ src/
 │   ├── Auth/          registro e login (orquestra o cadastro)
 │   ├── Users/         entidade User + gestão
 │   ├── Companies/     os tenants (empresas clientes) + horários de funcionamento (BusinessHours)
+│   ├── Customers/     gestão e persistência de clientes (identidade e telefone)
 │   └── Conversations/ conversa + mensagens + roteador genérico de tools (IChatTool)
 ├── Capabilities/     ações transacionais reusáveis
 │   ├── Appointments/  agendamentos (Appointment + service + repo + Tools/{CreateAppointmentTool,

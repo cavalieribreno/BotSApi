@@ -30,4 +30,8 @@ export class AppointmentService {
       { headers: { 'Content-Type': 'application/json' } }
     );
   }
+
+  getAppointmentsByCustomer(phone: string): Observable<Appointment[]> {
+    return this.http.get<Appointment[]>(`${this.api}/customer?phone=${encodeURIComponent(phone)}`);
+  }
 }

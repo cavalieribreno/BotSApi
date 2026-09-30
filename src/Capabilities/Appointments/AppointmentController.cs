@@ -45,6 +45,32 @@ public class AppointmentController : ControllerBase
         return Ok(response);
     }
 
+    // Owner retrieves all appointments of a specific customer by phone number
+    [HttpGet("customer")]
+    public async Task<IActionResult> GetAppointmentsByCustomer([FromQuery] string phone)
+    {
+        string? companyId = User.FindFirstValue("companyId");
+        if (!Guid.TryParse(companyId, out Guid companyGuid))
+        {
+            return Unauthorized(new { error = "Empresa inválida" });
+        }
+
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            return BadRequest(new { error = "Telefone é obrigatório." });
+        }
+
+        List<Appointment> appointments = await _appointmentService.GetAppointmentsByCustomer(companyGuid, phone.Trim());
+        List<AppointmentResponse> response = new List<AppointmentResponse>();
+        foreach (Appointment appointment in appointments)
+        {
+            response.Add(new AppointmentResponse(
+                appointment.Id, appointment.CompanyId, appointment.ConversationId, appointment.ProfessionalId, appointment.ProfessionalName, appointment.ServiceName, appointment.CustomerName, appointment.CustomerPhone, appointment.ScheduledAt, appointment.Status.ToString(), appointment.Origin.ToString(), appointment.CreatedAt
+            ));
+        }
+        return Ok(response);
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateAppointment([FromBody] CreateAppointmentRequest request)
     {

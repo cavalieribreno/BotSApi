@@ -24,18 +24,28 @@ public class CustomerService : ICustomerService
         string cleanPhone = string.Empty;
         if (phone != null)
         {
-            cleanPhone = phone.Trim();
+            cleanPhone = System.Text.RegularExpressions.Regex.Replace(phone, @"\D", "");
         }
 
-        if (string.IsNullOrWhiteSpace(cleanPhone))
+        if (cleanPhone.StartsWith("55") && (cleanPhone.Length == 12 || cleanPhone.Length == 13))
         {
-            return Result<Customer>.Failure("Phone is required.");
+            cleanPhone = cleanPhone.Substring(2);
+        }
+
+        if (cleanPhone.Length < 10 || cleanPhone.Length > 11)
+        {
+            return Result<Customer>.Failure("Telefone inválido. Informe um número com DDD (10 ou 11 dígitos).");
         }
 
         string cleanName = string.Empty;
         if (name != null)
         {
             cleanName = name.Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(cleanName))
+        {
+            return Result<Customer>.Failure("Nome do cliente é obrigatório.");
         }
 
         using DbConnection connection = _databaseConnection.CreateConnection();
@@ -71,7 +81,12 @@ public class CustomerService : ICustomerService
         string cleanPhone = string.Empty;
         if (phone != null)
         {
-            cleanPhone = phone.Trim();
+            cleanPhone = System.Text.RegularExpressions.Regex.Replace(phone, @"\D", "");
+        }
+
+        if (cleanPhone.StartsWith("55") && (cleanPhone.Length == 12 || cleanPhone.Length == 13))
+        {
+            cleanPhone = cleanPhone.Substring(2);
         }
 
         return await _customerRepository.GetCustomerByPhone(companyId, cleanPhone);

@@ -52,4 +52,25 @@ public class CustomerController : ControllerBase
         CustomerResponse response = new CustomerResponse(customer.Id, customer.Name, customer.Phone, customer.CreatedAt);
         return Ok(response);
     }
+
+    // Owner creates a new customer manually
+    [HttpPost]
+    public async Task<IActionResult> CreateCustomer([FromBody] CreateCustomerRequest request)
+    {
+        string? companyId = User.FindFirstValue("companyId");
+        if (!Guid.TryParse(companyId, out Guid companyGuid))
+        {
+            return Unauthorized(new { error = "Empresa inválida" });
+        }
+
+        Result<Customer> result = await _customerService.FindOrCreateCustomer(companyGuid, request.Phone, request.Name);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(new { error = result.Error });
+        }
+
+        Customer customer = result.Value!;
+        CustomerResponse response = new CustomerResponse(customer.Id, customer.Name, customer.Phone, customer.CreatedAt);
+        return Created($"/api/customers/{customer.Id}", response);
+    }
 }

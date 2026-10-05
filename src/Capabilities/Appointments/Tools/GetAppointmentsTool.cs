@@ -28,7 +28,12 @@ public class GetAppointmentsTool : IChatTool
         List<Appointment> appointments;
         try
         {
-            appointments = await _appointmentService.GetAppointmentsByCustomer(context.CompanyId, context.CustomerPhone);
+            string phoneToQuery = context.ChannelContactId;
+            if (!string.IsNullOrWhiteSpace(context.CustomerPhone))
+            {
+                phoneToQuery = context.CustomerPhone;
+            }
+            appointments = await _appointmentService.GetAppointmentsByCustomer(context.CompanyId, phoneToQuery);
         }
         catch (DbException)
         {

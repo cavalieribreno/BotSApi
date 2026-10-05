@@ -4,7 +4,7 @@ namespace BotSaaS.Api.Core.Conversations;
 
 public record ToolOutcome(string Content, bool FinalResponse);
 
-public record WhoContext(Guid CompanyId, Guid ConversationId, string CustomerPhone);
+public record WhoContext(Guid CompanyId, Guid ConversationId, MessageChannel Channel, string ChannelContactId, string? CustomerPhone);
 
 public interface IChatTool
 {

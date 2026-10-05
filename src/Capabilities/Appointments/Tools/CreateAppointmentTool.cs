@@ -34,7 +34,8 @@ public class CreateAppointmentTool : IChatTool
             new ToolParameter("data", "string", "A data no formato AAAA-MM-DD", true),
             new ToolParameter("hora", "string", "O horário EXATO no formato HH:MM 24h, ex: 09:00. Nunca use termos vagos como 'de manhã'.", true),
             new ToolParameter("nome", "string", "O nome do cliente, dito por ele. Nunca invente nem use genéricos como 'cliente'; se ele não informou, pergunte antes.", true),
-            new ToolParameter("profissional", "string", "O nome do profissional/barbeiro", true)
+            new ToolParameter("profissional", "string", "O nome do profissional/barbeiro", true),
+            new ToolParameter("telefone", "string", "O número de WhatsApp do cliente com DDD (obrigatório se estiver no Telegram; no WhatsApp você já tem o número e não precisa perguntar)", false)
         });
 
     // Parse the args the model filled in -> create the appointment -> return a message for the customer.
@@ -64,7 +65,17 @@ public class CreateAppointmentTool : IChatTool
             return new ToolOutcome("Data ou hora inválida. Por favor, informe a data e hora desejada.", FinalResponse: true);
         }
 
-        CreateAppointmentRequest createRequest = new CreateAppointmentRequest(professional.Id, args.Servico, args.Nome, whoContext.CustomerPhone, scheduledAt);
+        string finalPhone = whoContext.ChannelContactId;
+        if (!string.IsNullOrWhiteSpace(whoContext.CustomerPhone))
+        {
+            finalPhone = whoContext.CustomerPhone;
+        }
+        if (!string.IsNullOrWhiteSpace(args.Telefone))
+        {
+            finalPhone = args.Telefone;
+        }
+
+        CreateAppointmentRequest createRequest = new CreateAppointmentRequest(professional.Id, args.Servico, args.Nome, finalPhone, scheduledAt);
 
         Result<Appointment> result = await _appointmentService.CreateAppointment(whoContext.CompanyId, createRequest, AppointmentOrigin.Bot, whoContext.ConversationId);
 
@@ -86,7 +97,7 @@ public class CreateAppointmentTool : IChatTool
         }
         // format from the parsed ScheduledAt (source of truth), pt-BR so the weekday reads in Portuguese
         Appointment appointment = result.Value!;
-        await _customerService.FindOrCreateCustomer(whoContext.CompanyId, whoContext.CustomerPhone, args.Nome);
+        await _customerService.FindOrCreateCustomer(whoContext.CompanyId, finalPhone, args.Nome);
         
         string quando = appointment.ScheduledAt.ToString("dddd, dd/MM 'às' HH:mm", new CultureInfo("pt-BR"));
         return new ToolOutcome($"Pronto, {args.Nome}! Seu {args.Servico} com {professional.Name} ficou agendado para {quando}.", FinalResponse: true);

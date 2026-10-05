@@ -66,7 +66,7 @@ public class TelegramPollingService : BackgroundService
         using (IServiceScope scope = _scopeFactory.CreateScope())
         {
             IConversationService conversations = scope.ServiceProvider.GetRequiredService<IConversationService>();
-            Result<string> result = await conversations.ProcessMessage(companyId, chatId.ToString(), text);
+            Result<string> result = await conversations.ProcessMessage(companyId, MessageChannel.Telegram, chatId.ToString(), text);
             reply = result.IsSuccess ? result.Value! : "Desculpe, tive um problema aqui. Pode tentar de novo?";
         }
 

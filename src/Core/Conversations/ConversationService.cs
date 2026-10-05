@@ -29,19 +29,30 @@ public class ConversationService : IConversationService
         _chatTools = chatTools;
         _customerService = customerService;
     }
-    public async Task<Result<string>> ProcessMessage(Guid companyId, string customerPhone, string messageText)
+    public async Task<Result<string>> ProcessMessage(Guid companyId, MessageChannel channel, string channelContactId, string messageText)
     {
         // survive across the two connection scopes (LLM runs between them)
         Guid conversationId;
         List<ChatMessage> chatHistory;
 
-        string? customerName = null;
-        Customer? customer = await _customerService.GetCustomerByPhone(companyId, customerPhone);
-        if (customer != null)
+        // For WhatsApp, the contact ID is the customer's phone number itself.
+        // For other channels (Telegram, Instagram), phone is resolved later when provided.
+        string? customerPhone = null;
+        if (channel == MessageChannel.WhatsApp)
         {
-            if (!string.IsNullOrWhiteSpace(customer.Name))
+            customerPhone = channelContactId;
+        }
+
+        string? customerName = null;
+        if (!string.IsNullOrWhiteSpace(customerPhone))
+        {
+            Customer? customer = await _customerService.GetCustomerByPhone(companyId, customerPhone);
+            if (customer != null)
             {
-                customerName = customer.Name;
+                if (!string.IsNullOrWhiteSpace(customer.Name))
+                {
+                    customerName = customer.Name;
+                }
             }
         }
 
@@ -52,7 +63,7 @@ public class ConversationService : IConversationService
             _dbSession.Connection = connection;
             await connection.OpenAsync();
 
-            Conversation? conversation = await _conversationRepository.GetConversationByCompanyAndPhone(companyId, customerPhone);
+            Conversation? conversation = await _conversationRepository.GetConversationByCompanyAndChannel(companyId, channel, channelContactId);
 
             if (conversation != null)
             {
@@ -77,11 +88,17 @@ public class ConversationService : IConversationService
                 {
                     Id = Guid.NewGuid(),
                     CompanyId = companyId,
+                    Channel = channel,
+                    ChannelContactId = channelContactId,
                     CustomerPhone = customerPhone,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 };
                 await _conversationRepository.InsertConversation(conversation);
+            }
+            else if (string.IsNullOrWhiteSpace(customerPhone) && !string.IsNullOrWhiteSpace(conversation.CustomerPhone))
+            {
+                customerPhone = conversation.CustomerPhone;
             }
             conversationId = conversation.Id;
 
@@ -168,7 +185,7 @@ public class ConversationService : IConversationService
                     }
                     else
                     {
-                        ToolOutcome toolOutcome = await chosen.Handle(new WhoContext(companyId, conversationId, customerPhone), toolCall.ArgumentsJson);
+                        ToolOutcome toolOutcome = await chosen.Handle(new WhoContext(companyId, conversationId, channel, channelContactId, customerPhone), toolCall.ArgumentsJson);
                         if (toolOutcome.FinalResponse)
                         {
                             finalText = toolOutcome.Content;

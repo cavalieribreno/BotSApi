@@ -71,12 +71,14 @@ CREATE TABLE IF NOT EXISTS customers (
 CREATE TABLE IF NOT EXISTS conversations (
     id CHAR(36) NOT NULL COMMENT 'Primary Key',
     company_id CHAR(36) NOT NULL,
-    customer_phone VARCHAR(20) NOT NULL,
+    channel INT(11) NOT NULL DEFAULT 0 COMMENT '0 = WhatsApp, 1 = Telegram, 2 = Instagram',
+    channel_contact_id VARCHAR(100) NOT NULL DEFAULT '' COMMENT 'Phone, Telegram ChatId, or Instagram IGSID',
+    customer_phone VARCHAR(50) DEFAULT NULL COMMENT 'Real customer phone when provided',
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL COMMENT 'Created Time',
     closed_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
-    KEY idx_company_phone_active (company_id, customer_phone, is_active),
+    KEY idx_company_channel_contact_active (company_id, channel, channel_contact_id, is_active),
     CONSTRAINT fk_conversations_company_id FOREIGN KEY (company_id) REFERENCES companies (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

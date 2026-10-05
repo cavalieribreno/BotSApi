@@ -27,7 +27,7 @@ public class ConversationController : ControllerBase
             return Unauthorized(new {error = "Empresa inválida"});
         }
 
-        Result<string> result = await _conversationService.ProcessMessage(companyGuid, request.CustomerPhone, request.MessageText);
+        Result<string> result = await _conversationService.ProcessMessage(companyGuid, MessageChannel.WhatsApp, request.CustomerPhone, request.MessageText);
 
         if(!result.IsSuccess) return BadRequest(new { error = result.Error });
 
@@ -57,6 +57,17 @@ public class ConversationController : ControllerBase
         {
             messages.Add(new MessageResponse(message.Role.ToString(), message.Content, message.CreatedAt));
         }
-        return Ok(new ConversationDetailResponse(detail.Conversation.CustomerPhone, messages));
+
+        string displayContact = string.Empty;
+        if (!string.IsNullOrWhiteSpace(detail.Conversation.CustomerPhone))
+        {
+            displayContact = detail.Conversation.CustomerPhone;
+        }
+        else
+        {
+            displayContact = detail.Conversation.ChannelContactId;
+        }
+
+        return Ok(new ConversationDetailResponse(displayContact, messages));
     }
 }

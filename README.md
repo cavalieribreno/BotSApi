@@ -22,7 +22,7 @@ O cliente marca um horário conversando naturalmente; a IA extrai a ação e ela
 | Acesso a dados | **ADO.NET puro** (sem ORM/Dapper) + driver MySqlConnector |
 | Auth | JWT próprio (HMAC-SHA256) + BCrypt |
 | IA | Google Gemini ou Groq/Llama (atrás de interface neutra `IAiClient`, trocável) |
-| Canais | **Telegram** (long polling, funcionando) · WhatsApp (webhook, planejado) |
+| Canais | Omnichannel: **Telegram** (long polling ativo) · WhatsApp (planejado) · Instagram (planejado) |
 | Frontend | Angular 21 (standalone, signals) — painel do dono |
 
 ## Arquitetura
@@ -78,8 +78,10 @@ Decisões de design que guiam o código:
 - ✅ **Mini-CRM & Gestão de Clientes (`/customers`)** — tabela `customers` (`company_id`, `phone`, `name`) com isolamento por tenant; reconhecimento de identidade pelo bot no chat; cadastro manual com sanitização e validação estrita de telefone (DDD válido e 10 a 11 dígitos); tela no painel em tabela executiva compacta com busca instantânea, links rápidos para WhatsApp/Telegram e modal de histórico de atendimentos passados e futuros
 - ✅ **Ciclo de Vida de Sessões & Expiração por Inatividade (12h)** — gerenciamento de sessões ativas (`is_active`, `closed_at`) na tabela `conversations` com encerramento automático após 12h de inatividade; impede que mensagens antigas poluam o contexto da IA e causem alucinações de datas passadas, preservando a identidade permanente do cliente via tabela `customers`
 - ✅ **Agendamento Manual pela Recepção & Modelagem de Origem** — endpoint `POST /api/appointments` (tenant-scoped) permitindo que a recepção crie agendamentos de balcão/telefone; modelagem com `origin` (`Bot` vs `Manual`), `customer_phone` autossuficiente e `conversation_id` opcional, desacoplando agendamentos do chat
+- ✅ **Arquitetura Omnichannel (`MessageChannel`)** — suporte nativo a múltiplos canais de chat (WhatsApp, Telegram, Instagram); separação do identificador do canal (`channel_contact_id`) do telefone (`customer_phone`), com índice composto otimizado (`idx_company_channel_contact_active`)
+- ✅ **Cadastro Automático de Clientes via Bot & Ciclo de Transações** — persistência automática de novos clientes no Mini-CRM (`customers`) ao concluir agendamento pelo bot; isolamento estrito de transação no `DbSession` após commits/rollbacks
 - ✅ **Script DDL Unificado do Banco de Dados** — arquivo `database/schema.sql` contendo o schema completo e fiel de todas as 8 tabelas e índices do MySQL para provisionamento rápido em qualquer ambiente
-- 🔜 Webhook de WhatsApp, cobrança
+- 🔜 Catálogo de serviços com preço e duração, webhook oficial WhatsApp, cobrança via PIX
 
 ## Endpoints
 
@@ -111,7 +113,23 @@ Decisões de design que guiam o código:
 
 ## Como rodar
 
-**Pré-requisitos:** SDK do .NET 10, MySQL (ex: XAMPP), uma chave de API de IA (Google Gemini ou Groq).
+### Opção 1: Via Docker Compose (Recomendado)
+
+**Pré-requisito:** Docker e Docker Compose instalados.
+
+1. Clone o repositório e configure seu arquivo `.env` na raiz.
+2. Suba o ecossistema completo (Banco MySQL, Backend .NET e Frontend Angular):
+   ```bash
+   docker compose up -d
+   ```
+3. Acessos:
+   - **Frontend (Painel do Dono):** `http://localhost:4200`
+   - **Backend API:** `http://localhost:5069`
+   - **Banco MySQL:** `localhost:3306` (inicializado automaticamente via `database/schema.sql`)
+
+### Opção 2: Localmente
+
+**Pré-requisitos:** SDK do .NET 10, Node.js 20+, MySQL, uma chave de API de IA (Google Gemini ou Groq).
 
 1. Clone o repositório e crie um arquivo `.env` na raiz.
 2. Preencha o `.env` com suas variáveis: banco (`DB_HOST/USER/PASSWORD/NAME/PORT`),
@@ -119,21 +137,20 @@ Decisões de design que guiam o código:
    `GROQ_API_KEY/MODEL`) e `SYSTEM_PROMPT`. O provedor ativo é escolhido na DI (`Program.cs`).
    - **Opcional (canal Telegram):** `TELEGRAM_BOT_TOKEN` (do @BotFather) e `TELEGRAM_TEST_COMPANY_ID`
      (a empresa que recebe os agendamentos do bot). Sem essas vars, o canal fica desligado e o resto roda normal.
-3. Crie o banco e as tabelas `companies`, `users`, `conversations`, `messages`, `appointments`, `business_hours` e `professionals` no MySQL.
-4. Rode:
+3. Crie o banco e execute o script unificado `database/schema.sql` no MySQL (ele cria as 8 tabelas e todos os índices necessários).
+4. Rode o backend:
    ```bash
    dotnet run
    ```
+   A API sobe em `http://localhost:5069`. Se o Telegram estiver configurado, o console mostra `Telegram polling iniciado.`
 
-A API sobe em `http://localhost:5069`. Se o Telegram estiver configurado, o console mostra `Telegram polling iniciado.`
-
-**Frontend (painel do dono):**
-```bash
-cd web
-npm install
-ng serve
-```
-Abre em `http://localhost:4200`. Precisa do backend no ar (CORS já libera `localhost:4200`).
+5. Rode o frontend (painel do dono):
+   ```bash
+   cd web
+   npm install
+   ng serve
+   ```
+   Abre em `http://localhost:4200`. Precisa do backend no ar (CORS já libera `localhost:4200`).
 
 ## Estrutura
 
@@ -162,5 +179,5 @@ src/
     ├── Database/    conexão e sessão de transação
     └── AI/          cliente de IA (Gemini e Groq, atrás de IAiClient)
 
-web/                 painel do dono em Angular (login + agendamentos + gestão de status)
+web/                 painel do dono em Angular (login + agenda de cadeiras + clientes + equipe + horários)
 ```

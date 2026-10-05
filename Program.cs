@@ -17,7 +17,7 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 
 // Read Env
-DotNetEnv.Env.Load();
+DotNetEnv.Env.NoClobber().Load(); // no clobber envs injected by docker, etc...
 
 // Dependencies 
 builder.Services.AddHttpClient<IAiClient, GroqAiClient>();

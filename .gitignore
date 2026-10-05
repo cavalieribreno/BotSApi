@@ -26,3 +26,8 @@ artifacts/
 # OS
 Thumbs.db
 .DS_Store
+
+#Docker
+Dockerfile
+.dockerignore
+docker-compose.yaml

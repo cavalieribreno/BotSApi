@@ -78,16 +78,19 @@ public class AppointmentService : IAppointmentService
             if (!await _availabilityPolicy.IsSlotFree(companyId, request.ProfessionalId, request.ScheduledAt))
             {
                 await transaction.RollbackAsync();
+                _dbSession.Transaction = null!;
                 return Result<Appointment>.Conflict("Esse horário não está disponível.");
             }
 
             await _appointmentRepository.InsertAppointment(appointment);
             await transaction.CommitAsync();
+            _dbSession.Transaction = null!;
             return Result<Appointment>.Success(appointment); 
         }
         catch (DbException)
         {
             await transaction.RollbackAsync();
+            _dbSession.Transaction = null!;
             return Result<Appointment>.Failure("Não foi possível concluir o agendamento. Tente novamente.");
         }
     }

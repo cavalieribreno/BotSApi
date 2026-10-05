@@ -50,6 +50,7 @@ public class CustomerService : ICustomerService
 
         using DbConnection connection = _databaseConnection.CreateConnection();
         _dbSession.Connection = connection;
+        _dbSession.Transaction = null!;
         await connection.OpenAsync();
 
         Customer? customer = await _customerRepository.GetCustomerByPhone(companyId, cleanPhone);

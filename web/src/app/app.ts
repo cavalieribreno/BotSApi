@@ -1,5 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { RouterOutlet } from '@angular/router';
+
+// Single source of truth for the platform name. Change here to rebrand.
+export const PLATFORM_NAME = 'BotSaaS';
 
 @Component({
   selector: 'app-root',
@@ -8,5 +12,7 @@ import { RouterOutlet } from '@angular/router';
   styleUrl: './app.css'
 })
 export class App {
-  protected readonly title = signal('web');
+  constructor() {
+    inject(Title).setTitle(`${PLATFORM_NAME} • Agenda Inteligente`);
+  }
 }

@@ -7,7 +7,7 @@ import { ProfessionalService } from '../../services/professional.service';
 import { Appointment } from '../../models/appointment';
 import { Professional } from '../../models/professional';
 
-// Editorial appointment dashboard matching the luxury barbershop design
+// Editorial appointment dashboard matching the modern SaaS design
 @Component({
   selector: 'app-appointments',
   imports: [CommonModule, DatePipe, FormsModule, RouterLink],

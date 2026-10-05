@@ -1,16 +1,16 @@
 <!-- Cabeçalho Sólido Corporativo (Edge-to-Edge, colado no topo) -->
-<header class="sticky top-0 z-50 w-full bg-white border-b border-barber-border">
+<header class="sticky top-0 z-50 w-full bg-white border-b border-brand-border">
   
   <!-- Linha 1: Marca da Empresa e Perfil -->
   <div class="w-full px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4 border-b border-zinc-100">
     
     <!-- Logo & Nome da Empresa -->
     <div class="flex items-center gap-3 cursor-pointer" routerLink="/appointments">
-      <div class="w-8 h-8 bg-barber-black text-white rounded-lg flex items-center justify-center font-display font-bold text-sm shadow-xs">
+      <div class="w-8 h-8 bg-brand-black text-white rounded-lg flex items-center justify-center font-display font-bold text-sm shadow-xs">
         {{ companyInitial }}
       </div>
       <div class="flex items-center gap-2">
-        <span class="font-display font-bold text-base text-barber-black tracking-tight">{{ company }}</span>
+        <span class="font-display font-bold text-base text-brand-black tracking-tight">{{ company }}</span>
         <span class="text-xs text-zinc-400 font-medium hidden sm:inline">/</span>
         <span class="text-xs font-semibold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md hidden sm:inline">Painel de Recepção</span>
       </div>
@@ -19,13 +19,13 @@
     <!-- Perfil & Logout -->
     <div class="flex items-center gap-2">
       <div 
-        class="w-8 h-8 rounded-xl bg-barber-black text-white flex items-center justify-center font-display font-bold text-xs shadow-xs cursor-default"
+        class="w-8 h-8 rounded-xl bg-brand-black text-white flex items-center justify-center font-display font-bold text-xs shadow-xs cursor-default"
         [title]="email">
         {{ initial }}
       </div>
       <button 
         (click)="logout()" 
-        class="p-1.5 text-barber-mute hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors" 
+        class="p-1.5 text-brand-mute hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors" 
         title="Sair do painel">
         <i class="ph ph-sign-out text-lg"></i>
       </button>
@@ -37,30 +37,30 @@
     <nav class="flex items-center gap-6 sm:gap-8">
       <a 
         routerLink="/appointments" 
-        routerLinkActive="text-barber-black border-barber-black font-bold" 
+        routerLinkActive="text-brand-black border-brand-black font-bold" 
         [routerLinkActiveOptions]="{ exact: true }"
-        class="flex items-center gap-2 pt-3 pb-2.5 text-xs font-semibold text-barber-mute hover:text-barber-black border-b-2 border-transparent -mb-px transition-all">
+        class="flex items-center gap-2 pt-3 pb-2.5 text-xs font-semibold text-brand-mute hover:text-brand-black border-b-2 border-transparent -mb-px transition-all">
         <i class="ph ph-calendar-blank text-base"></i>
         <span>Agenda</span>
       </a>
       <a 
         routerLink="/customers" 
-        routerLinkActive="text-barber-black border-barber-black font-bold" 
-        class="flex items-center gap-2 pt-3 pb-2.5 text-xs font-semibold text-barber-mute hover:text-barber-black border-b-2 border-transparent -mb-px transition-all">
+        routerLinkActive="text-brand-black border-brand-black font-bold" 
+        class="flex items-center gap-2 pt-3 pb-2.5 text-xs font-semibold text-brand-mute hover:text-brand-black border-b-2 border-transparent -mb-px transition-all">
         <i class="ph ph-address-book text-base"></i>
         <span>Clientes</span>
       </a>
       <a 
         routerLink="/team" 
-        routerLinkActive="text-barber-black border-barber-black font-bold" 
-        class="flex items-center gap-2 pt-3 pb-2.5 text-xs font-semibold text-barber-mute hover:text-barber-black border-b-2 border-transparent -mb-px transition-all">
+        routerLinkActive="text-brand-black border-brand-black font-bold" 
+        class="flex items-center gap-2 pt-3 pb-2.5 text-xs font-semibold text-brand-mute hover:text-brand-black border-b-2 border-transparent -mb-px transition-all">
         <i class="ph ph-users text-base"></i>
         <span>Equipe</span>
       </a>
       <a 
         routerLink="/settings" 
-        routerLinkActive="text-barber-black border-barber-black font-bold" 
-        class="flex items-center gap-2 pt-3 pb-2.5 text-xs font-semibold text-barber-mute hover:text-barber-black border-b-2 border-transparent -mb-px transition-all">
+        routerLinkActive="text-brand-black border-brand-black font-bold" 
+        class="flex items-center gap-2 pt-3 pb-2.5 text-xs font-semibold text-brand-mute hover:text-brand-black border-b-2 border-transparent -mb-px transition-all">
         <i class="ph ph-clock text-base"></i>
         <span>Horários</span>
       </a>
@@ -78,38 +78,38 @@
 <router-outlet />
 
 <!-- Mobile Bottom Navigation (Aparece apenas em telas pequenas) -->
-<nav class="lg:hidden fixed bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-barber-border flex justify-around pb-safe z-50 shadow-md">
+<nav class="lg:hidden fixed bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-brand-border flex justify-around pb-safe z-50 shadow-md">
   <a 
     routerLink="/appointments" 
-    routerLinkActive="text-barber-black font-bold" 
-    class="flex flex-col items-center gap-1 p-3 text-barber-mute">
+    routerLinkActive="text-brand-black font-bold" 
+    class="flex flex-col items-center gap-1 p-3 text-brand-mute">
     <i class="ph-fill ph-calendar-blank text-xl"></i>
     <span class="text-[10px] uppercase tracking-wider">Agenda</span>
   </a>
   <a 
     routerLink="/customers" 
-    routerLinkActive="text-barber-black font-bold" 
-    class="flex flex-col items-center gap-1 p-3 text-barber-mute">
+    routerLinkActive="text-brand-black font-bold" 
+    class="flex flex-col items-center gap-1 p-3 text-brand-mute">
     <i class="ph-fill ph-address-book text-xl"></i>
     <span class="text-[10px] uppercase tracking-wider">Clientes</span>
   </a>
   <a 
     routerLink="/team" 
-    routerLinkActive="text-barber-black font-bold" 
-    class="flex flex-col items-center gap-1 p-3 text-barber-mute">
+    routerLinkActive="text-brand-black font-bold" 
+    class="flex flex-col items-center gap-1 p-3 text-brand-mute">
     <i class="ph ph-users text-xl"></i>
     <span class="text-[10px] uppercase tracking-wider">Equipe</span>
   </a>
   <a 
     routerLink="/settings" 
-    routerLinkActive="text-barber-black font-bold" 
-    class="flex flex-col items-center gap-1 p-3 text-barber-mute">
+    routerLinkActive="text-brand-black font-bold" 
+    class="flex flex-col items-center gap-1 p-3 text-brand-mute">
     <i class="ph ph-clock text-xl"></i>
     <span class="text-[10px] uppercase tracking-wider">Horários</span>
   </a>
   <button 
     (click)="logout()" 
-    class="flex flex-col items-center gap-1 p-3 text-barber-mute hover:text-red-600">
+    class="flex flex-col items-center gap-1 p-3 text-brand-mute hover:text-red-600">
     <i class="ph ph-sign-out text-xl"></i>
     <span class="text-[10px] uppercase tracking-wider">Sair</span>
   </button>

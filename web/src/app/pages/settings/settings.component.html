@@ -2,15 +2,15 @@
   <!-- Page Header -->
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
     <div>
-      <h1 class="font-display font-bold text-3xl text-barber-black tracking-tight">Horários de Atendimento</h1>
-      <p class="text-barber-mute text-sm mt-1">
+      <h1 class="font-display font-bold text-3xl text-brand-black tracking-tight">Horários de Atendimento</h1>
+      <p class="text-brand-mute text-sm mt-1">
         Configure os dias e períodos em que seu bot aceitará agendamentos automaticamente.
       </p>
     </div>
     
     <div class="flex items-center gap-2.5">
       <button 
-        class="bg-white hover:bg-gray-50 border border-barber-border hover:border-barber-black text-barber-black px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+        class="bg-white hover:bg-gray-50 border border-brand-border hover:border-brand-black text-brand-black px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
         (click)="copyMondayToWeekdays()" 
         [disabled]="loading() || saving()" 
         title="Aplica o horário de Segunda-feira para Terça a Sexta">
@@ -19,7 +19,7 @@
       </button>
 
       <button 
-        class="bg-barber-black hover:bg-zinc-800 text-white px-5 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+        class="bg-brand-black hover:bg-zinc-800 text-white px-5 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
         (click)="save()" 
         [disabled]="loading() || saving()">
         @if (saving()) {
@@ -49,14 +49,14 @@
   }
 
   <!-- Schedule List Card -->
-  <div class="bg-white border border-barber-border rounded-2xl shadow-sm overflow-hidden">
+  <div class="bg-white border border-brand-border rounded-2xl shadow-sm overflow-hidden">
     @if (loading()) {
-      <div class="p-12 text-center text-barber-mute">
+      <div class="p-12 text-center text-brand-mute">
         <i class="ph ph-circle-notch text-2xl animate-spin mb-2 inline-block"></i>
         <p class="text-sm font-medium">Carregando horários de funcionamento...</p>
       </div>
     } @else {
-      <div class="divide-y divide-barber-border">
+      <div class="divide-y divide-brand-border">
         @for (day of days(); track day.dayOfWeek) {
           <div 
             class="flex items-center justify-between p-5 transition-colors"
@@ -75,8 +75,8 @@
               </label>
               <span 
                 class="font-display font-bold text-base"
-                [class.text-barber-black]="!day.isClosed"
-                [class.text-barber-mute]="day.isClosed">
+                [class.text-brand-black]="!day.isClosed"
+                [class.text-brand-mute]="day.isClosed">
                 {{ day.name }}
               </span>
             </div>
@@ -88,17 +88,17 @@
                   <input 
                     type="time" 
                     [(ngModel)]="day.opensAt" 
-                    class="bg-barber-bg border border-barber-border rounded-xl px-3 py-1.5 text-sm font-display font-bold text-barber-black focus:outline-none focus:border-barber-black focus:ring-1 focus:ring-barber-black transition-all shadow-sm w-28 text-center"
+                    class="bg-brand-bg border border-brand-border rounded-xl px-3 py-1.5 text-sm font-display font-bold text-brand-black focus:outline-none focus:border-brand-black focus:ring-1 focus:ring-brand-black transition-all shadow-sm w-28 text-center"
                   />
-                  <span class="text-xs font-semibold text-barber-mute uppercase">às</span>
+                  <span class="text-xs font-semibold text-brand-mute uppercase">às</span>
                   <input 
                     type="time" 
                     [(ngModel)]="day.closesAt" 
-                    class="bg-barber-bg border border-barber-border rounded-xl px-3 py-1.5 text-sm font-display font-bold text-barber-black focus:outline-none focus:border-barber-black focus:ring-1 focus:ring-barber-black transition-all shadow-sm w-28 text-center"
+                    class="bg-brand-bg border border-brand-border rounded-xl px-3 py-1.5 text-sm font-display font-bold text-brand-black focus:outline-none focus:border-brand-black focus:ring-1 focus:ring-brand-black transition-all shadow-sm w-28 text-center"
                   />
                 </div>
               } @else {
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold text-barber-mute bg-barber-bg border border-barber-border">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold text-brand-mute bg-brand-bg border border-brand-border">
                   <span class="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
                   <span>Fechado o dia todo</span>
                 </div>

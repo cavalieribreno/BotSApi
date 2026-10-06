@@ -1,12 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/env.production';
 import { Appointment, CreateAppointmentRequest } from '../models/appointment';
 
 // Reads and manages the company's appointments (the owner's view).
 @Injectable({ providedIn: 'root' })
 export class AppointmentService {
-  private readonly api = 'http://localhost:5069/api/appointments';
+  private readonly api = `${environment.apiUrl}/appointments`;
 
   constructor(private http: HttpClient) {}
 

@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/env.production';
 import { Professional, CreateProfessionalRequest, UpdateProfessionalRequest, ProfessionalStatus } from '../models/professional';
 
 @Injectable({ providedIn: 'root' })
 export class ProfessionalService {
-  private readonly api = 'http://localhost:5069/api/professionals';
+  private readonly api = `${environment.apiUrl}/professionals`;
 
   constructor(private http: HttpClient) {}
 

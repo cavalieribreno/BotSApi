@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/env.production';
 import { Customer, CreateCustomerRequest } from '../models/customer';
 
 @Injectable({ providedIn: 'root' })
 export class CustomerService {
-  private readonly api = 'http://localhost:5069/api/customers';
+  private readonly api = `${environment.apiUrl}/customers`;
 
   constructor(private http: HttpClient) {}
 

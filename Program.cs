@@ -51,11 +51,19 @@ builder.Services.AddHttpClient<IChannelSender, TelegramChannelSender>();
 builder.Services.AddHostedService<TelegramPollingService>();
 builder.Services.AddHostedService<ReminderBackgroundService>();
 
-// CORS: allow the Angular dev app (localhost:4200) to call the API.
+// CORS: allow the Angular to call the API.
+List<string> allowedUrls = new List<string>{ "http://localhost:4200" };
+
+string? frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
+if (!string.IsNullOrWhiteSpace(frontendUrl))
+{
+    allowedUrls.Add(frontendUrl);
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
-        policy.WithOrigins("http://localhost:4200")
+        policy.WithOrigins(allowedUrls.ToArray())
               .AllowAnyHeader()
               .AllowAnyMethod());
 });

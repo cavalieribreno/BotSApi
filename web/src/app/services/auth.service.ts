@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { environment } from '../../environments/env.production';
 
 // Auth: logs in against the API and holds the JWT (in localStorage).
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly api = 'http://localhost:5069/api/auth';
+  private readonly api = `${environment.apiUrl}/auth`;
   private readonly tokenKey = 'botsaas_token';
   private readonly emailKey = 'botsaas_email';
   private readonly companyKey = 'botsaas_company';

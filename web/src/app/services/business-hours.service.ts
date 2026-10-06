@@ -1,12 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/env.production';
 import { BusinessHours } from '../models/business-hours';
 
 // Reads and updates the company's operating hours schedule.
 @Injectable({ providedIn: 'root' })
 export class BusinessHoursService {
-  private readonly api = 'http://localhost:5069/api/business-hours';
+  private readonly api = `${environment.apiUrl}/business-hours`;
 
   constructor(private http: HttpClient) {}
 

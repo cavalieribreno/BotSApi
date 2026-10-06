@@ -28,11 +28,22 @@ public class GetAppointmentsTool : IChatTool
         List<Appointment> appointments;
         try
         {
-            string phoneToQuery = context.ChannelContactId;
+            string phoneToQuery = string.Empty;
+            if (context.Channel == MessageChannel.WhatsApp)
+            {
+                phoneToQuery = context.ChannelContactId;
+            }
+
             if (!string.IsNullOrWhiteSpace(context.CustomerPhone))
             {
                 phoneToQuery = context.CustomerPhone;
             }
+
+            if (string.IsNullOrWhiteSpace(phoneToQuery))
+            {
+                return new ToolOutcome("Para consultar seus agendamentos, por favor me informe o seu número de WhatsApp com DDD.", FinalResponse: true);
+            }
+
             appointments = await _appointmentService.GetAppointmentsByCustomer(context.CompanyId, phoneToQuery);
         }
         catch (DbException)

@@ -35,7 +35,7 @@ public class CreateAppointmentTool : IChatTool
             new ToolParameter("hora", "string", "O horário EXATO no formato HH:MM 24h, ex: 09:00. Nunca use termos vagos como 'de manhã'.", true),
             new ToolParameter("nome", "string", "O nome do cliente, dito por ele. Nunca invente nem use genéricos como 'cliente'; se ele não informou, pergunte antes.", true),
             new ToolParameter("profissional", "string", "O nome do profissional/barbeiro", true),
-            new ToolParameter("telefone", "string", "O número de WhatsApp do cliente com DDD (obrigatório se estiver no Telegram; no WhatsApp você já tem o número e não precisa perguntar)", false)
+            new ToolParameter("telefone", "string", "O número de WhatsApp do cliente com DDD (obrigatório se o canal for Telegram ou Instagram. Se o cliente ainda não informou, pergunte antes de chamar a tool)", false)
         });
 
     // Parse the args the model filled in -> create the appointment -> return a message for the customer.
@@ -65,14 +65,25 @@ public class CreateAppointmentTool : IChatTool
             return new ToolOutcome("Data ou hora inválida. Por favor, informe a data e hora desejada.", FinalResponse: true);
         }
 
-        string finalPhone = whoContext.ChannelContactId;
+        string finalPhone = string.Empty;
+        if (whoContext.Channel == MessageChannel.WhatsApp)
+        {
+            finalPhone = whoContext.ChannelContactId;
+        }
+
         if (!string.IsNullOrWhiteSpace(whoContext.CustomerPhone))
         {
             finalPhone = whoContext.CustomerPhone;
         }
+
         if (!string.IsNullOrWhiteSpace(args.Telefone))
         {
             finalPhone = args.Telefone;
+        }
+
+        if (string.IsNullOrWhiteSpace(finalPhone))
+        {
+            return new ToolOutcome("Por favor, me informe seu número de WhatsApp com DDD para confirmarmos o agendamento.", FinalResponse: true);
         }
 
         CreateAppointmentRequest createRequest = new CreateAppointmentRequest(professional.Id, args.Servico, args.Nome, finalPhone, scheduledAt);

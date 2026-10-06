@@ -1,0 +1,40 @@
+services:
+  backend:
+    image: server-backend:0.1
+    ports:
+      - "5069:5069"
+    volumes:
+      - ./.env:/source/.env
+    environment: 
+      - DB_HOST=database
+    depends_on:
+      - database        # só liga o backend depois do db 
+    networks:
+      - app-network 
+  
+  frontend:
+    image: server-frontend:0.1
+    ports:
+      - "4200:4200"
+    networks:
+      - app-network
+    
+  database:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=botsaasapi
+    volumes:
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - mysql_data:/var/lib/mysql          #salvar os dados no db
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+    
+volumes:
+  mysql_data:

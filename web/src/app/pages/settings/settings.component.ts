@@ -54,6 +54,7 @@ export class SettingsComponent implements OnInit {
   channelsLoading = signal(false);
   channelsSaving = signal(false);
   showAddChannelModal = signal(false);
+  channelToDelete = signal<ChannelResponse | null>(null);
   channelModalError = signal('');
   newChannelToken = signal('');
 
@@ -157,9 +158,17 @@ export class SettingsComponent implements OnInit {
     });
   }
 
-  deleteChannel(channel: ChannelResponse): void {
-    const confirmed = confirm('Tem certeza que deseja desconectar este canal?');
-    if (!confirmed) {
+  openDeleteChannelModal(channel: ChannelResponse): void {
+    this.channelToDelete.set(channel);
+  }
+
+  cancelDeleteChannel(): void {
+    this.channelToDelete.set(null);
+  }
+
+  confirmDeleteChannel(): void {
+    const channel = this.channelToDelete();
+    if (!channel) {
       return;
     }
 
@@ -170,11 +179,13 @@ export class SettingsComponent implements OnInit {
       next: () => {
         this.channels.update(list => list.filter(c => c.id !== channel.id));
         this.channelsSaving.set(false);
+        this.channelToDelete.set(null);
         this.success.set('Canal desconectado com sucesso.');
         setTimeout(() => this.success.set(''), 4000);
       },
       error: (err: any) => {
         this.channelsSaving.set(false);
+        this.channelToDelete.set(null);
         let msg = 'Erro ao desconectar canal.';
         if (err && err.error && err.error.error) {
           msg = err.error.error;

@@ -155,7 +155,7 @@
                 </span>
 
                 <button 
-                  (click)="deleteChannel(c)"
+                  (click)="openDeleteChannelModal(c)"
                   [disabled]="channelsSaving()"
                   class="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
                   title="Desconectar este bot">
@@ -627,6 +627,51 @@
             } @else {
               <i class="ph-bold ph-check text-base"></i>
               <span>Salvar Alterações</span>
+            }
+          </button>
+        </div>
+
+      </div>
+    </div>
+  }
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: CONFIRMAR DESCONEXÃO DE CANAL                                  -->
+  <!-- ===================================================================== -->
+  @if (channelToDelete()) {
+    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white border border-brand-border rounded-2xl shadow-xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200">
+        
+        <div class="flex items-start gap-4 mb-4">
+          <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center text-xl shrink-0">
+            <i class="ph-bold ph-warning"></i>
+          </div>
+          <div>
+            <h3 class="font-display font-bold text-lg text-brand-black">Desconectar Robô?</h3>
+            <p class="text-xs text-brand-mute mt-1 leading-relaxed">
+              Tem certeza que deseja desconectar o bot do <strong>{{ getChannelProviderName(channelToDelete()!.type) }}</strong>? O robô deixará de atender novos clientes e agendar horários automaticamente.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-brand-border">
+          <button 
+            (click)="cancelDeleteChannel()"
+            [disabled]="channelsSaving()"
+            class="px-4 py-2 border border-brand-border hover:bg-zinc-50 text-brand-mute hover:text-brand-black rounded-xl text-sm font-semibold transition-all">
+            Cancelar
+          </button>
+          
+          <button 
+            (click)="confirmDeleteChannel()"
+            [disabled]="channelsSaving()"
+            class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50">
+            @if (channelsSaving()) {
+              <i class="ph ph-circle-notch text-base animate-spin"></i>
+              <span>Desconectando...</span>
+            } @else {
+              <i class="ph-bold ph-trash text-base"></i>
+              <span>Sim, Desconectar</span>
             }
           </button>
         </div>

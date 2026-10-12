@@ -80,6 +80,7 @@ Decisões de design que guiam o código:
 - ✅ **Arquitetura Omnichannel (`MessageChannel`)** — suporte nativo a múltiplos canais de chat (WhatsApp, Telegram, Instagram); separação do identificador do canal (`channel_contact_id`) do telefone (`customer_phone`), com índice composto otimizado (`idx_company_channel_contact_active`)
 - ✅ **Cadastro Automático de Clientes via Bot & Ciclo de Transações** — persistência automática de novos clientes no Mini-CRM (`customers`) ao concluir agendamento pelo bot; isolamento estrito de transação no `DbSession` após commits/rollbacks
 - ✅ **Canais de Atendimento Multi-Tenant (`/channels`) & Webhooks Dinâmicos** — gestão dinâmica de bots por empresa no banco (`channels`); conexão extensível via Strategy Pattern (`IChannelProvider` e `IChannelService`) respeitando o Open-Closed Principle (OCP); resolução automática de tenant pelo `{channelId}` na URL de webhook sem variáveis fixas no `.env`; proteção contra vulnerabilidades de IDOR/BOLA com queries estritas `company_id`.
+- ✅ **Hub de Configurações ⚙️ & Refinamento de UX (`/settings`)** — unificação das opções administrativas (Canais de Atendimento, Equipe & Profissionais e Horários de Expediente) em abas fluidas acessíveis via engrenagem no topo direito; barra de navegação principal otimizada para a rotina diária (`Agenda` e `Clientes`); modais dedicados de cadastro/edição com validações e tradução de erros em tempo real.
 - ✅ **Script DDL Unificado do Banco de Dados** — arquivo `database/schema.sql` contendo o schema completo e fiel de todas as 9 tabelas e índices do MySQL para provisionamento rápido em qualquer ambiente
 - 🔜 Catálogo de serviços com preço e duração, webhook oficial WhatsApp, cobrança via PIX
 
@@ -182,5 +183,5 @@ src/
     ├── Database/    conexão e sessão de transação
     └── AI/          cliente de IA (Gemini e Groq, atrás de IAiClient)
 
-web/                 painel do dono em Angular (login + agenda de cadeiras + clientes + equipe + horários)
+web/                 painel do dono em Angular (login + agenda + clientes + hub de configurações /settings com canais, equipe e horários)
 ```

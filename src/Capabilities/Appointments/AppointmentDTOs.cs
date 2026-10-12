@@ -27,11 +27,12 @@ public record AppointmentResponse(
 // Fields in PT on purpose - they're the JSON keys the model fills (servico/data/hora/nome/profissional).
 public record AppointmentArgs(string Servico, string Data, string Hora, string Nome, string Profissional, string? Telefone);
 
-// DTO carrying appointment details + contact phone from JOIN with conversations, used by the reminder worker.
+// DTO carrying appointment details + contact phone and company bot channel token, used by the reminder worker.
 public record UpcomingReminder(
     Guid AppointmentId,
     Guid CompanyId,
     string CustomerName,
     string ServiceName,
     DateTime ScheduledAt,
-    string CustomerPhone);
+    string CustomerPhone,
+    string? ChannelIdentifier);

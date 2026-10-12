@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace BotSaaS.Api.Channels.Telegram;
+namespace BotSaaS.Api.Core.Channels.Telegram;
 
 // Minimal shapes of the Telegram Bot API payloads we actually read.
 

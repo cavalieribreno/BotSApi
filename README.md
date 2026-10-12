@@ -22,7 +22,7 @@ O cliente marca um horário conversando naturalmente; a IA extrai a ação e ela
 | Acesso a dados | **ADO.NET puro** (sem ORM/Dapper) + driver MySqlConnector |
 | Auth | JWT próprio (HMAC-SHA256) + BCrypt |
 | IA | Google Gemini ou Groq/Llama (atrás de interface neutra `IAiClient`, trocável) |
-| Canais | Omnichannel: **Telegram** (long polling ativo) · WhatsApp (planejado) · Instagram (planejado) |
+| Canais | Omnichannel Multi-tenant: **Telegram** (Webhooks e Gestão Dinâmica por Empresa via Strategy Pattern) · WhatsApp (planejado) · Instagram (planejado) |
 | Frontend | Angular 21 (standalone, signals) — painel do dono |
 
 ## Arquitetura
@@ -30,13 +30,12 @@ O cliente marca um horário conversando naturalmente; a IA extrai a ação e ela
 Monólito modular com dependência em mão única:
 
 ```
-Channels/      → entrada por mensagem (Telegram, WhatsApp)
 Modules/       → nichos/verticais (ex: Barber): consomem Capabilities + regras próprias
 Capabilities/  → ações transacionais reusáveis (Appointments; futuro: Ordering...)
-Core/          → kernel universal (Auth, Users, Companies, Conversations, AI)
+Core/          → kernel universal (Auth, Users, Companies, Conversations, Customers, Channels)
 Shared/        → base técnica neutra (Results, Security, Database, AI)
 
-dependência (mão única):  Channels / Modules  →  Capabilities  →  Core  →  Shared
+dependência (mão única):  Modules  →  Capabilities  →  Core  →  Shared
 ```
 
 **Core** = kernel universal da plataforma (Auth, Users, Companies, Conversations, Customers) — o que QUALQUER negócio possui.
@@ -72,7 +71,7 @@ Decisões de design que guiam o código:
 - ✅ **Canal de mensagens real (Telegram)** — bot por *long polling* roteando cada mensagem pelo mesmo `ConversationService` da API; testado e2e (conversa real no Telegram → agendamento no painel)
 - ✅ **Regra de disponibilidade (anti-double-booking)** — dois clientes não fecham o mesmo horário; a segunda tentativa é recusada na gravação, testado e2e
 - ✅ **Lembrete automático de agendamento** — `ReminderBackgroundService` varre a cada 1 minuto agendamentos nas próximas 2 horas e envia lembrete proativo ao cliente via Telegram; marca `reminded_at` no banco para nunca repetir; índice composto `(reminded_at, scheduled_at, status)` garante performance
-- ✅ **Canal de envio neutro (`IChannelSender`)** — contrato em `Channels/Interfaces` implementado por `TelegramChannelSender` (Typed HttpClient via `IHttpClientFactory`); trocar para WhatsApp = nova implementação, zero mudança no lembrete
+- ✅ **Canal de envio neutro (`IMessageSender`)** — contrato em `Core/Channels/Interfaces` implementado por `TelegramMessageSender` (Typed HttpClient via `IHttpClientFactory`) com suporte a disparo multi-tenant via `channelIdentifier`; trocar para WhatsApp = nova implementação, zero mudança no fluxo
 - ✅ **Horário de funcionamento básico** — tabela `business_hours` por dia da semana (`opens_at`, `closes_at`, `is_closed`); validação no agendamento bloqueia datas passadas, dias fechados e horários fora de expediente; endpoints REST para consulta e edição + interface visual no painel
 - ✅ **Multi-Profissional (Equipe / Profissionais)** — gestão de profissionais por empresa (tabela `professionals`), vinculação obrigatória de profissional a cada agendamento (`professional_id`), disponibilidade anti-concorrência individual (dois profissionais atendem ao mesmo tempo sem conflito), consultas via `INNER JOIN`, e ferramentas da IA (`CreateAppointmentTool` com escolha de profissional e `GetProfessionalsTool` para a IA listar a equipe)
 - ✅ **Mini-CRM & Gestão de Clientes (`/customers`)** — tabela `customers` (`company_id`, `phone`, `name`) com isolamento por tenant; reconhecimento de identidade pelo bot no chat; cadastro manual com sanitização e validação estrita de telefone (DDD válido e 10 a 11 dígitos); tela no painel em tabela executiva compacta com busca instantânea, links rápidos para WhatsApp/Telegram e modal de histórico de atendimentos passados e futuros
@@ -80,7 +79,8 @@ Decisões de design que guiam o código:
 - ✅ **Agendamento Manual pela Recepção & Modelagem de Origem** — endpoint `POST /api/appointments` (tenant-scoped) permitindo que a recepção crie agendamentos de balcão/telefone; modelagem com `origin` (`Bot` vs `Manual`), `customer_phone` autossuficiente e `conversation_id` opcional, desacoplando agendamentos do chat
 - ✅ **Arquitetura Omnichannel (`MessageChannel`)** — suporte nativo a múltiplos canais de chat (WhatsApp, Telegram, Instagram); separação do identificador do canal (`channel_contact_id`) do telefone (`customer_phone`), com índice composto otimizado (`idx_company_channel_contact_active`)
 - ✅ **Cadastro Automático de Clientes via Bot & Ciclo de Transações** — persistência automática de novos clientes no Mini-CRM (`customers`) ao concluir agendamento pelo bot; isolamento estrito de transação no `DbSession` após commits/rollbacks
-- ✅ **Script DDL Unificado do Banco de Dados** — arquivo `database/schema.sql` contendo o schema completo e fiel de todas as 8 tabelas e índices do MySQL para provisionamento rápido em qualquer ambiente
+- ✅ **Canais de Atendimento Multi-Tenant (`/channels`) & Webhooks Dinâmicos** — gestão dinâmica de bots por empresa no banco (`channels`); conexão extensível via Strategy Pattern (`IChannelProvider` e `IChannelService`) respeitando o Open-Closed Principle (OCP); resolução automática de tenant pelo `{channelId}` na URL de webhook sem variáveis fixas no `.env`; proteção contra vulnerabilidades de IDOR/BOLA com queries estritas `company_id`.
+- ✅ **Script DDL Unificado do Banco de Dados** — arquivo `database/schema.sql` contendo o schema completo e fiel de todas as 9 tabelas e índices do MySQL para provisionamento rápido em qualquer ambiente
 - 🔜 Catálogo de serviços com preço e duração, webhook oficial WhatsApp, cobrança via PIX
 
 ## Endpoints
@@ -90,6 +90,10 @@ Decisões de design que guiam o código:
 | `POST` | `/api/auth/register` | Cria empresa + usuário |
 | `POST` | `/api/auth/login` | Autentica e devolve o JWT + o nome da empresa (white-label) |
 | `GET`  | `/api/me` | Identidade do requisitante (requer Bearer) |
+| `GET`  | `/api/channels` | Lista os canais de atendimento conectados da empresa (requer Bearer; tenant-scoped) |
+| `POST` | `/api/channels` | Conecta um canal (Telegram/WhatsApp) via Strategy Pattern e registra webhook (requer Bearer; tenant-scoped) |
+| `DELETE` | `/api/channels/{id}` | Desconecta um canal e remove o webhook no provedor externo (requer Bearer; tenant-scoped) |
+| `POST` | `/api/webhooks/telegram/{channelId}` | Endpoint público que recebe mensagens do Telegram, resolve o tenant pelo canal e despacha para a IA |
 | `POST` | `/api/conversations` | Processa uma mensagem do cliente e devolve a resposta da IA (requer Bearer; entrada dev/token) |
 | `POST` | `/api/appointments` | Cria um agendamento manualmente pela recepção (requer Bearer; tenant-scoped) |
 | `GET`  | `/api/appointments` | Lista os agendamentos da empresa do requisitante (requer Bearer; a "visão do dono") |
@@ -106,10 +110,9 @@ Decisões de design que guiam o código:
 | `GET`  | `/api/customers/{id}` | Detalha um cliente específico por ID (requer Bearer; tenant-scoped) |
 | `GET`  | `/api/appointments/customer?phone={phone}` | Lista o histórico de agendamentos de um cliente por telefone (requer Bearer; tenant-scoped) |
 
-> O **canal de Telegram** roda como dois serviços em background: `TelegramPollingService` (escuta
-> mensagens do cliente, *long polling*) e `ReminderBackgroundService` (envia lembretes proativos via
-> `TelegramChannelSender`). Ambos injetam no mesmo fluxo de dados.
-> Em produção, a entrada será o **webhook** (o `companyId` virá do canal, não de um token).
+> No **canal de Telegram**, a entrada em produção ocorre via **Webhook** (`/api/webhooks/telegram/{channelId}`),
+> onde cada empresa cadastra seu próprio bot no painel (`/settings`) e o webhook resolve dinamicamente o `companyId`.
+> Para desenvolvimento local sem necessidade de túnel público, o `TelegramPollingService` opcional pode ser utilizado como fallback.
 
 ## Como rodar
 
@@ -135,9 +138,9 @@ Decisões de design que guiam o código:
 2. Preencha o `.env` com suas variáveis: banco (`DB_HOST/USER/PASSWORD/NAME/PORT`),
    JWT (`JWT_SECRET/ISSUER/AUDIENCE/EXPIRES_HOURS`), IA (`GEMINI_API_KEY/MODEL` e/ou
    `GROQ_API_KEY/MODEL`) e `SYSTEM_PROMPT`. O provedor ativo é escolhido na DI (`Program.cs`).
-   - **Opcional (canal Telegram):** `TELEGRAM_BOT_TOKEN` (do @BotFather) e `TELEGRAM_TEST_COMPANY_ID`
-     (a empresa que recebe os agendamentos do bot). Sem essas vars, o canal fica desligado e o resto roda normal.
-3. Crie o banco e execute o script unificado `database/schema.sql` no MySQL (ele cria as 8 tabelas e todos os índices necessários).
+   - **Canais e Webhooks:** `APP_BASE_URL` (URL pública do backend, ex: `https://meu-saas.com` ou túnel ngrok para registrar os webhooks no Telegram).
+   - **Opcional (polling dev legado):** `TELEGRAM_BOT_TOKEN` e `TELEGRAM_TEST_COMPANY_ID` caso utilize o serviço local de polling em vez de webhook.
+3. Crie o banco e execute o script unificado `database/schema.sql` no MySQL (ele cria as 9 tabelas e todos os índices necessários).
 4. Rode o backend:
    ```bash
    dotnet run
@@ -156,14 +159,14 @@ Decisões de design que guiam o código:
 
 ```
 src/
-├── Channels/
-│   ├── Interfaces/   contrato neutro de envio (IChannelSender)
-│   └── Telegram/     canal de teste (long polling) + envio proativo (TelegramChannelSender)
 ├── Core/             kernel universal
 │   ├── Auth/          registro e login (orquestra o cadastro)
 │   ├── Users/         entidade User + gestão
 │   ├── Companies/     os tenants (empresas clientes) + horários de funcionamento (BusinessHours)
 │   ├── Customers/     gestão e persistência de clientes (identidade e telefone)
+│   ├── Channels/      gestão de canais multi-tenant (Strategy Pattern, IChannelProvider, IChannelService)
+│   │   ├── Interfaces/ contratos de providers, repositório e serviços
+│   │   └── Telegram/   adaptadores específicos do Telegram (Provider, WebhookController, Sender, Polling)
 │   └── Conversations/ conversa + mensagens + roteador genérico de tools (IChatTool)
 ├── Capabilities/     ações transacionais reusáveis
 │   ├── Appointments/  agendamentos (Appointment + service + repo + Tools/{CreateAppointmentTool,

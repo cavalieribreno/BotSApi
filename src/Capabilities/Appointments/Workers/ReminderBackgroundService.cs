@@ -1,5 +1,5 @@
 using System.Data.Common;
-using BotSaaS.Api.Channels;
+using BotSaaS.Api.Core.Channels;
 using BotSaaS.Api.Shared.Database;
 
 namespace BotSaaS.Api.Capabilities.Appointments;
@@ -46,7 +46,7 @@ public class ReminderBackgroundService : BackgroundService
         IDatabase database = scope.ServiceProvider.GetRequiredService<IDatabase>();
         DbSession dbSession = scope.ServiceProvider.GetRequiredService<DbSession>();
         IAppointmentRepository appointmentRepository = scope.ServiceProvider.GetRequiredService<IAppointmentRepository>();
-        IChannelSender channelSender = scope.ServiceProvider.GetRequiredService<IChannelSender>();
+        IMessageSender messageSender = scope.ServiceProvider.GetRequiredService<IMessageSender>();
 
         // 1. Fetch pending reminders and release DB connection immediately
         List<UpcomingReminder> reminders = new List<UpcomingReminder>();
@@ -68,7 +68,7 @@ public class ReminderBackgroundService : BackgroundService
             string horario = reminder.ScheduledAt.ToString("HH:mm");
             string text = $"Olá, {reminder.CustomerName}! Passando para lembrar que seu agendamento de {reminder.ServiceName} está marcado para hoje às {horario}.";
 
-            bool sent = await channelSender.SendMessageAsync(reminder.CustomerPhone, text, stoppingToken);
+            bool sent = await messageSender.SendMessageAsync(reminder.CustomerPhone, text, reminder.ChannelIdentifier, stoppingToken);
             if (sent)
             {
                 sentIds.Add(reminder.AppointmentId);

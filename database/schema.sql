@@ -116,3 +116,17 @@ CREATE TABLE IF NOT EXISTS appointments (
     CONSTRAINT fk_appointment_company FOREIGN KEY (company_id) REFERENCES companies (id),
     CONSTRAINT fk_appointment_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 9. Canais de Atendimento (Contas de mensageria conectadas a cada empresa)
+CREATE TABLE IF NOT EXISTS channels (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    company_id CHAR(36) NOT NULL,
+    type INT(11) NOT NULL COMMENT '0 = WhatsApp, 1 = Telegram, 2 = Instagram',
+    identifier VARCHAR(255) NOT NULL COMMENT 'Telegram bot token ou WhatsApp instance/phone',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    CONSTRAINT fk_channels_company FOREIGN KEY (company_id) REFERENCES companies (id) ON DELETE CASCADE,
+    KEY idx_channels_lookup (type, identifier, is_active),
+    KEY idx_channels_company (company_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

@@ -1,6 +1,6 @@
 using System.Text;
-using BotSaaS.Api.Channels;
-using BotSaaS.Api.Channels.Telegram;
+using BotSaaS.Api.Core.Channels;
+using BotSaaS.Api.Core.Channels.Telegram;
 using BotSaaS.Api.Core.Auth;
 using BotSaaS.Api.Core.Companies;
 using BotSaaS.Api.Core.Conversations;
@@ -44,8 +44,12 @@ builder.Services.AddScoped<IChatTool, CreateAppointmentTool>();
 builder.Services.AddScoped<IChatTool, GetAppointmentsTool>();
 builder.Services.AddScoped<IChatTool, GetProfessionalsTool>();
 
-// Outbound channel sender via Typed HttpClient
-builder.Services.AddHttpClient<IChannelSender, TelegramChannelSender>();
+builder.Services.AddScoped<IChannelRepository, ChannelRepository>();
+builder.Services.AddScoped<IChannelService, ChannelService>();
+builder.Services.AddHttpClient<IChannelProvider, TelegramChannelProvider>();
+
+// Outbound message sender via Typed HttpClient
+builder.Services.AddHttpClient<IMessageSender, TelegramMessageSender>();
 
 // Background workers
 builder.Services.AddHostedService<TelegramPollingService>();

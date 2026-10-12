@@ -190,8 +190,10 @@ public class AppointmentRepository : IAppointmentRepository
 
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
-        command.CommandText = @"SELECT ap.id, ap.company_id, ap.customer_name, ap.service_name, ap.scheduled_at, ap.customer_phone
+        command.CommandText = @"SELECT ap.id, ap.company_id, ap.customer_name, ap.service_name, ap.scheduled_at, ap.customer_phone,
+                                       ch.identifier AS channel_identifier
                                 FROM appointments ap
+                                LEFT JOIN channels ch ON ap.company_id = ch.company_id AND ch.is_active = 1
                                 WHERE ap.reminded_at IS NULL
                                   AND ap.status IN (@pending, @confirmed)
                                   AND ap.scheduled_at BETWEEN @windowStart AND @windowEnd
@@ -204,13 +206,20 @@ public class AppointmentRepository : IAppointmentRepository
         using DbDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
+            string? channelIdentifier = null;
+            if (reader["channel_identifier"] != DBNull.Value)
+            {
+                channelIdentifier = (string)reader["channel_identifier"];
+            }
+
             reminders.Add(new UpcomingReminder(
                 (Guid)reader["id"],
                 (Guid)reader["company_id"],
                 (string)reader["customer_name"],
                 (string)reader["service_name"],
                 (DateTime)reader["scheduled_at"],
-                (string)reader["customer_phone"]
+                (string)reader["customer_phone"],
+                channelIdentifier
             ));
         }
         return reminders;

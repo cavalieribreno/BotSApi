@@ -2,10 +2,10 @@ using System.Text.Json;
 using BotSaaS.Api.Core.Conversations;
 using BotSaaS.Api.Shared.Results;
 
-namespace BotSaaS.Api.Channels.Telegram;
+namespace BotSaaS.Api.Core.Channels.Telegram;
 
 // Test channel: long-polls Telegram and routes each message through the SAME ConversationService the API uses.
-// Tenant is resolved from config here (single test bot). Real multi-tenant resolution = a channels table, later.
+// Tenant is resolved from config here (single test bot). Real multi-tenant resolution = channels table.
 public class TelegramPollingService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;

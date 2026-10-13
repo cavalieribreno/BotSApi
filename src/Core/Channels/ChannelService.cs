@@ -49,6 +49,45 @@ public class ChannelService : IChannelService
             return Result<ChannelResponse>.Failure(credentialValidation.Error ?? "Invalid channel credentials.");
         }
 
+        string? appBaseUrl = Environment.GetEnvironmentVariable("APP_BASE_URL");
+        if (string.IsNullOrWhiteSpace(appBaseUrl))
+        {
+            return Result<ChannelResponse>.Failure("Environment variable APP_BASE_URL is not configured.");
+        }
+
+        using DbConnection connection = _databaseConnection.CreateConnection();
+        _dbSession.Connection = connection;
+        await connection.OpenAsync(); 
+
+        // Check if channel already exists in database
+        Channel? existingChannel = await _channelRepository.GetChannelByIdentifier(type, identifier);
+        if (existingChannel != null)
+        {
+            if (existingChannel.IsActive)
+            {
+                return Result<ChannelResponse>.Failure("Este canal já está conectado e ativo.");
+            }
+
+            if (existingChannel.CompanyId != companyId)
+            {
+                return Result<ChannelResponse>.Failure("Este canal já está vinculado a outra organização.");
+            }
+
+            // Reactivate existing channel
+            await _channelRepository.ReactivateChannel(existingChannel.Id, companyId);
+
+            Result<bool> webhookResult = await providerConnect.RegisterWebhook(existingChannel.Id, identifier, appBaseUrl);
+            if (!webhookResult.IsSuccess)
+            {
+                return Result<ChannelResponse>.Failure(webhookResult.Error ?? "Failed to register channel webhook.");
+            }
+
+            ChannelResponse reactivatedResponse = new ChannelResponse(existingChannel.Id, existingChannel.CompanyId, existingChannel.Type, existingChannel.Identifier, true, existingChannel.CreatedAt, DateTime.UtcNow);
+
+            return Result<ChannelResponse>.Success(reactivatedResponse);
+        }
+
+        // New channel registration
         Channel channel = new Channel
         {
             Id = Guid.NewGuid(),
@@ -60,22 +99,12 @@ public class ChannelService : IChannelService
             UpdatedAt = DateTime.UtcNow
         };
 
-        using DbConnection connection = _databaseConnection.CreateConnection();
-        _dbSession.Connection = connection;
-        await connection.OpenAsync(); 
-
         await _channelRepository.InsertChannel(channel);
 
-        string? appBaseUrl = Environment.GetEnvironmentVariable("APP_BASE_URL");
-        if (string.IsNullOrWhiteSpace(appBaseUrl))
+        Result<bool> newWebhookResult = await providerConnect.RegisterWebhook(channel.Id, identifier, appBaseUrl);
+        if (!newWebhookResult.IsSuccess)
         {
-            return Result<ChannelResponse>.Failure("Environment variable APP_BASE_URL is not configured.");
-        }
-
-        Result<bool> webhookResult = await providerConnect.RegisterWebhook(channel.Id, identifier, appBaseUrl);
-        if (!webhookResult.IsSuccess)
-        {
-            return Result<ChannelResponse>.Failure(webhookResult.Error ?? "Failed to register channel webhook.");
+            return Result<ChannelResponse>.Failure(newWebhookResult.Error ?? "Failed to register channel webhook.");
         }
 
         ChannelResponse response = new ChannelResponse(channel.Id, channel.CompanyId, channel.Type, channel.Identifier, channel.IsActive, channel.CreatedAt, channel.UpdatedAt);

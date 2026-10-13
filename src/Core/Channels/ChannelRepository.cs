@@ -37,7 +37,7 @@ public class ChannelRepository : IChannelRepository
         command.Transaction = _dbSession.Transaction;
         command.CommandText = @"SELECT id, company_id, type, identifier, is_active, created_at, updated_at 
                                 FROM channels 
-                                WHERE company_id = @company_id";
+                                WHERE company_id = @company_id AND is_active = 1";
 
         command.AddParameter("@company_id", companyId.ToString());
 
@@ -121,13 +121,13 @@ public class ChannelRepository : IChannelRepository
         };
     }
 
-    public async Task<Channel?> GetActiveChannelByIdentifier(MessageChannel type, string identifier)
+    public async Task<Channel?> GetChannelByIdentifier(MessageChannel type, string identifier)
     {
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
         command.CommandText = @"SELECT id, company_id, type, identifier, is_active, created_at, updated_at 
                                 FROM channels 
-                                WHERE type = @type AND identifier = @identifier AND is_active = 1 
+                                WHERE type = @type AND identifier = @identifier 
                                 LIMIT 1";
 
         command.AddParameter("@type", (int)type);
@@ -149,6 +149,21 @@ public class ChannelRepository : IChannelRepository
             CreatedAt = (DateTime)reader["created_at"],
             UpdatedAt = (DateTime)reader["updated_at"]
         };
+    }
+
+    public async Task<int> ReactivateChannel(Guid id, Guid companyId)
+    {
+        using DbCommand command = _dbSession.Connection.CreateCommand();
+        command.Transaction = _dbSession.Transaction;
+        command.CommandText = @"UPDATE channels 
+                                SET is_active = 1, updated_at = @updated_at 
+                                WHERE id = @id AND company_id = @company_id";
+
+        command.AddParameter("@id", id.ToString());
+        command.AddParameter("@company_id", companyId.ToString());
+        command.AddParameter("@updated_at", DateTime.UtcNow);
+
+        return await command.ExecuteNonQueryAsync();
     }
 
     public async Task<int> DeactivateChannel(Guid id, Guid companyId)

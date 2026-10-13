@@ -12,6 +12,7 @@ public interface IChannelRepository
     // Public webhook tenant resolution: resolves tenant ownership from inbound route {channelId}.
     Task<Channel?> GetActiveChannelById(Guid id);
 
-    Task<Channel?> GetActiveChannelByIdentifier(MessageChannel type, string identifier);
+    Task<Channel?> GetChannelByIdentifier(MessageChannel type, string identifier);
+    Task<int> ReactivateChannel(Guid id, Guid companyId);
     Task<int> DeactivateChannel(Guid id, Guid companyId);
 }

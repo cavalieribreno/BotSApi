@@ -7,5 +7,5 @@ public interface ICustomerRepository
     Task<Customer?> GetCustomerByPhone(Guid companyId, string phone);
     Task<List<Customer>> GetCustomersByCompany(Guid companyId);
     Task<Customer?> GetCustomerById(Guid id, Guid companyId);
-    Task<int> UpdateCustomerName(Guid id, Guid companyId, string name);
+    Task<int> UpdateCustomer(Guid id, Guid companyId, string name, string phone);
 }

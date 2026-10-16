@@ -155,8 +155,15 @@
               {{ c.createdAt | date:'dd/MM/yyyy' }}
             </div>
 
-            <!-- Coluna 4: Ação de Histórico -->
-            <div class="col-span-3 sm:col-span-2 flex items-center justify-end">
+            <!-- Coluna 4: Ações (Editar + Histórico) -->
+            <div class="col-span-3 sm:col-span-2 flex items-center justify-end gap-1.5">
+              <button 
+                (click)="openEditModal(c)"
+                class="w-7 h-7 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 border border-zinc-200 rounded-lg text-xs flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                title="Editar cliente">
+                <i class="ph ph-pencil-simple text-xs"></i>
+              </button>
+
               <button 
                 (click)="openHistoryModal(c)"
                 class="px-3 py-1.5 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 border border-zinc-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
@@ -253,6 +260,95 @@
             } @else {
               <i class="ph-bold ph-plus text-xs"></i>
               <span>Cadastrar</span>
+            }
+          </button>
+        </div>
+
+      </div>
+    </div>
+  }
+
+  <!-- Modal: Editar Cliente -->
+  @if (showEditModal()) {
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div class="bg-white border border-brand-border rounded-2xl shadow-xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200">
+        
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-brand-black text-white flex items-center justify-center">
+              <i class="ph ph-pencil-simple text-base"></i>
+            </div>
+            <div>
+              <h3 class="font-display font-bold text-lg text-brand-black">Editar Cliente</h3>
+              <p class="text-xs text-brand-mute">Atualize o nome ou telefone do cliente.</p>
+            </div>
+          </div>
+          <button 
+            (click)="closeEditModal()"
+            class="text-brand-mute hover:text-brand-black p-1.5 rounded-lg hover:bg-zinc-100 transition-colors cursor-pointer">
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        @if (editError()) {
+          <div class="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+            <i class="ph-fill ph-warning-circle text-sm shrink-0"></i>
+            <span>{{ editError() }}</span>
+          </div>
+        }
+
+        <!-- Input Fields -->
+        <div class="space-y-4 mb-5">
+          <div>
+            <label class="block text-xs font-bold text-zinc-700 mb-1">
+              Nome Completo *
+            </label>
+            <input 
+              type="text" 
+              [ngModel]="editName()"
+              (ngModelChange)="editName.set($event)"
+              placeholder="Ex: Pedro Henrique"
+              autofocus
+              class="w-full px-3 py-2 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-950 focus:bg-white text-brand-black font-medium"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-zinc-700 mb-1">
+              Telefone *
+            </label>
+            <input 
+              type="text" 
+              [ngModel]="editPhone()"
+              (ngModelChange)="onEditPhoneInputChange($event)"
+              (keydown.enter)="saveEditCustomer()"
+              maxlength="15"
+              placeholder="Ex: (11) 98765-4321"
+              class="w-full px-3 py-2 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-950 focus:bg-white text-brand-black font-medium"
+            />
+          </div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100">
+          <button 
+            (click)="closeEditModal()"
+            [disabled]="saving()"
+            class="px-4 py-2 border border-zinc-200 hover:bg-zinc-50 text-zinc-600 rounded-xl text-xs font-semibold transition-all cursor-pointer">
+            Cancelar
+          </button>
+          
+          <button 
+            (click)="saveEditCustomer()"
+            [disabled]="saving()"
+            class="bg-brand-black hover:bg-zinc-800 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+            @if (saving()) {
+              <i class="ph ph-circle-notch text-xs animate-spin"></i>
+              <span>Salvando...</span>
+            } @else {
+              <i class="ph-bold ph-check text-xs"></i>
+              <span>Salvar</span>
             }
           </button>
         </div>

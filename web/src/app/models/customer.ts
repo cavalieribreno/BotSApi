@@ -9,3 +9,8 @@ export interface CreateCustomerRequest {
   name: string;
   phone: string;
 }
+
+export interface UpdateCustomerRequest {
+  name: string;
+  phone: string;
+}

@@ -112,17 +112,18 @@ public class CustomerRepository : ICustomerRepository
         };
     }
 
-    public async Task<int> UpdateCustomerName(Guid id, Guid companyId, string name)
+    public async Task<int> UpdateCustomer(Guid id, Guid companyId, string name, string phone)
     {
         using DbCommand command = _dbSession.Connection.CreateCommand();
         command.Transaction = _dbSession.Transaction;
         command.CommandText = @"UPDATE customers 
-                                SET name = @name 
+                                SET name = @name, phone = @phone 
                                 WHERE id = @id AND company_id = @company_id";
-
+                                
         command.AddParameter("@id", id.ToString());
         command.AddParameter("@company_id", companyId.ToString());
         command.AddParameter("@name", name);
+        command.AddParameter("@phone", phone);
 
         return await command.ExecuteNonQueryAsync();
     }

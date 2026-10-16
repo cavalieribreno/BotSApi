@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/env.production';
-import { Customer, CreateCustomerRequest } from '../models/customer';
+import { Customer, CreateCustomerRequest, UpdateCustomerRequest } from '../models/customer';
 
 @Injectable({ providedIn: 'root' })
 export class CustomerService {
@@ -20,5 +20,9 @@ export class CustomerService {
 
   createCustomer(request: CreateCustomerRequest): Observable<Customer> {
     return this.http.post<Customer>(this.api, request);
+  }
+
+  updateCustomer(id: string, request: UpdateCustomerRequest): Observable<Customer> {
+    return this.http.put<Customer>(`${this.api}/${id}`, request);
   }
 }

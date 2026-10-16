@@ -27,6 +27,13 @@ export class CustomersComponent implements OnInit {
   newPhone = signal('');
   addError = signal('');
 
+  // Modal de Editar Cliente
+  showEditModal = signal(false);
+  editingCustomerId = signal<string | null>(null);
+  editName = signal('');
+  editPhone = signal('');
+  editError = signal('');
+
   // Modal de Histórico de Atendimentos
   showHistoryModal = signal(false);
   historyLoading = signal(false);
@@ -139,6 +146,85 @@ export class CustomersComponent implements OnInit {
           msg = err.error.error;
         }
         this.addError.set(msg);
+      }
+    });
+  }
+
+  openEditModal(customer: Customer): void {
+    this.editingCustomerId.set(customer.id);
+    this.editName.set(customer.name);
+    this.editPhone.set(this.formatPhone(customer.phone));
+    this.editError.set('');
+    this.saving.set(false);
+    this.showEditModal.set(true);
+  }
+
+  closeEditModal(): void {
+    this.showEditModal.set(false);
+    this.editingCustomerId.set(null);
+    this.editError.set('');
+  }
+
+  onEditPhoneInputChange(val: string): void {
+    let digits = val.replace(/\D/g, '');
+    if (digits.length > 11) {
+      digits = digits.substring(0, 11);
+    }
+
+    let masked = digits;
+    if (digits.length > 2 && digits.length <= 6) {
+      masked = `(${digits.substring(0, 2)}) ${digits.substring(2)}`;
+    } else if (digits.length > 6 && digits.length <= 10) {
+      masked = `(${digits.substring(0, 2)}) ${digits.substring(2, 6)}-${digits.substring(6)}`;
+    } else if (digits.length > 10) {
+      masked = `(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7, 11)}`;
+    }
+
+    this.editPhone.set(masked);
+  }
+
+  saveEditCustomer(): void {
+    const id = this.editingCustomerId();
+    if (!id) {
+      return;
+    }
+
+    const name = this.editName().trim();
+    if (!name) {
+      this.editError.set('Por favor, informe o nome do cliente.');
+      return;
+    }
+
+    const rawPhone = this.editPhone().trim();
+    const phoneDigits = rawPhone.replace(/\D/g, '');
+    if (!phoneDigits) {
+      this.editError.set('Por favor, informe o telefone com DDD.');
+      return;
+    }
+
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      this.editError.set('Por favor, informe um telefone válido com DDD (10 ou 11 dígitos).');
+      return;
+    }
+
+    this.saving.set(true);
+    this.editError.set('');
+
+    this.customerService.updateCustomer(id, { name, phone: phoneDigits }).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.closeEditModal();
+        this.successMessage.set('Cliente atualizado com sucesso!');
+        this.load();
+        setTimeout(() => this.successMessage.set(''), 3000);
+      },
+      error: (err) => {
+        this.saving.set(false);
+        let msg = 'Erro ao atualizar cliente.';
+        if (err.error && err.error.error) {
+          msg = err.error.error;
+        }
+        this.editError.set(msg);
       }
     });
   }

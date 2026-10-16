@@ -73,4 +73,23 @@ public class CustomerController : ControllerBase
         CustomerResponse response = new CustomerResponse(customer.Id, customer.Name, customer.Phone, customer.CreatedAt);
         return Created($"/api/customers/{customer.Id}", response);
     }
+
+    // Owner updates an existing customer's details (name and phone)
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> UpdateCustomer(Guid id, [FromBody] UpdateCustomerRequest request)
+    {
+        string? companyId = User.FindFirstValue("companyId");
+        if (!Guid.TryParse(companyId, out Guid companyGuid))
+        {
+            return Unauthorized(new { error = "Empresa inválida" });
+        }
+
+        Result<CustomerResponse> result = await _customerService.UpdateCustomer(id, companyGuid, request);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(new { error = result.Error });
+        }
+
+        return Ok(result.Value);
+    }
 }

@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Text.RegularExpressions;
 using BotSaaS.Api.Shared.Database;
 using BotSaaS.Api.Shared.Results;
 
@@ -18,19 +19,27 @@ public class CustomerService : ICustomerService
         _dbSession = dbSession;
     }
 
+    private static string CleanPhone(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            return string.Empty;
+        }
+
+        string clean = Regex.Replace(phone, @"\D", "");
+
+        if (clean.StartsWith("55") && (clean.Length == 12 || clean.Length == 13))
+        {
+            clean = clean.Substring(2);
+        }
+
+        return clean;
+    }
+
     // Resolves an existing customer by phone or creates a new record.
     public async Task<Result<Customer>> FindOrCreateCustomer(Guid companyId, string phone, string name)
     {
-        string cleanPhone = string.Empty;
-        if (phone != null)
-        {
-            cleanPhone = System.Text.RegularExpressions.Regex.Replace(phone, @"\D", "");
-        }
-
-        if (cleanPhone.StartsWith("55") && (cleanPhone.Length == 12 || cleanPhone.Length == 13))
-        {
-            cleanPhone = cleanPhone.Substring(2);
-        }
+        string cleanPhone = CleanPhone(phone);
 
         if (cleanPhone.Length < 10 || cleanPhone.Length > 11)
         {
@@ -60,7 +69,7 @@ public class CustomerService : ICustomerService
             return Result<Customer>.Success(customer);
         }
 
-        customer = new Customer
+        Customer newCustomer = new Customer
         {
             Id = Guid.NewGuid(),
             CompanyId = companyId,
@@ -69,8 +78,9 @@ public class CustomerService : ICustomerService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _customerRepository.InsertCustomer(customer);
-        return Result<Customer>.Success(customer);
+        await _customerRepository.InsertCustomer(newCustomer);
+
+        return Result<Customer>.Success(newCustomer);
     }
 
     public async Task<Customer?> GetCustomerByPhone(Guid companyId, string phone)
@@ -79,16 +89,7 @@ public class CustomerService : ICustomerService
         _dbSession.Connection = connection;
         await connection.OpenAsync();
 
-        string cleanPhone = string.Empty;
-        if (phone != null)
-        {
-            cleanPhone = System.Text.RegularExpressions.Regex.Replace(phone, @"\D", "");
-        }
-
-        if (cleanPhone.StartsWith("55") && (cleanPhone.Length == 12 || cleanPhone.Length == 13))
-        {
-            cleanPhone = cleanPhone.Substring(2);
-        }
+        string cleanPhone = CleanPhone(phone);
 
         return await _customerRepository.GetCustomerByPhone(companyId, cleanPhone);
     }
@@ -125,23 +126,57 @@ public class CustomerService : ICustomerService
         return Result<Customer>.Success(customer);
     }
 
-    public async Task<Result<bool>> UpdateCustomerName(Guid id, Guid companyId, string name)
+    public async Task<Result<CustomerResponse>> UpdateCustomer(Guid id, Guid companyId, UpdateCustomerRequest request)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (request == null)
         {
-            return Result<bool>.Failure("Name is required.");
+            return Result<CustomerResponse>.Failure("Dados do cliente são obrigatórios.");
+        }
+
+        string cleanName = string.Empty;
+        if (request.Name != null)
+        {
+            cleanName = request.Name.Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(cleanName))
+        {
+            return Result<CustomerResponse>.Failure("Nome do cliente é obrigatório.");
+        }
+
+        string cleanPhone = CleanPhone(request.Phone);
+
+        if (cleanPhone.Length < 10 || cleanPhone.Length > 11)
+        {
+            return Result<CustomerResponse>.Failure("Telefone inválido. Informe um número com DDD (10 ou 11 dígitos).");
         }
 
         using DbConnection connection = _databaseConnection.CreateConnection();
         _dbSession.Connection = connection;
         await connection.OpenAsync();
 
-        int rowsAffected = await _customerRepository.UpdateCustomerName(id, companyId, name.Trim());
-        if (rowsAffected == 0)
+        Customer? existingCustomer = await _customerRepository.GetCustomerById(id, companyId);
+        if (existingCustomer == null)
         {
-            return Result<bool>.Failure("Customer not found.");
+            return Result<CustomerResponse>.Failure("Cliente não encontrado.");
         }
 
-        return Result<bool>.Success(true);
+        if (existingCustomer.Phone != cleanPhone)
+        {
+            Customer? customerWithSamePhone = await _customerRepository.GetCustomerByPhone(companyId, cleanPhone);
+            if (customerWithSamePhone != null && customerWithSamePhone.Id != id)
+            {
+                return Result<CustomerResponse>.Failure("Já existe outro cliente cadastrado com este telefone.");
+            }
+        }
+
+        int rowsAffected = await _customerRepository.UpdateCustomer(id, companyId, cleanName, cleanPhone);
+        if (rowsAffected == 0)
+        {
+            return Result<CustomerResponse>.Failure("Erro ao atualizar cliente.");
+        }
+
+        CustomerResponse response = new CustomerResponse(id, cleanName, cleanPhone, existingCustomer.CreatedAt);
+        return Result<CustomerResponse>.Success(response);
     }
 }

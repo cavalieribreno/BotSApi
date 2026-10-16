@@ -8,5 +8,5 @@ public interface ICustomerService
     Task<Customer?> GetCustomerByPhone(Guid companyId, string phone);
     Task<List<CustomerResponse>> GetCustomers(Guid companyId);
     Task<Result<Customer>> GetCustomerById(Guid id, Guid companyId);
-    Task<Result<bool>> UpdateCustomerName(Guid id, Guid companyId, string name);
+    Task<Result<CustomerResponse>> UpdateCustomer(Guid id, Guid companyId, UpdateCustomerRequest request);
 }
